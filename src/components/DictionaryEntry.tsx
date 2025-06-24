@@ -58,7 +58,7 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
 
   return (
     <div
-      className="w-full transition-all duration-300 ease-in-out"
+      className="w-full transition-all duration-300 ease-in-out rounded-[20px]"
       style={{
         backgroundColor: colors.primaryBg,
         color: colors.primaryFg
@@ -93,10 +93,11 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
             {entry.definitions.map((definition, index) => (
               <div key={definition.id}>
                 <div
-                  className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light mb-3"
+                  className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light mb-3 border-[0.5px]"
                   style={{
-                    backgroundColor: colors.secondaryBg,
-                    color: colors.secondaryFg
+                    borderColor: colors.primaryFg,
+                    color: colors.primaryFg,
+                    backgroundColor: 'transparent'
                   }}
                 >
                   {definition.grammaticalClass}
@@ -132,6 +133,7 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
             >
               <Volume2
                 size={24}
+                fill={colors.secondaryFg}
                 style={{ color: colors.secondaryFg }}
               />
             </button>
