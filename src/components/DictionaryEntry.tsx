@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DictionaryEntry as DictionaryEntryType } from '../types/dictionary';
 import { Plus, Minus, Volume2 } from 'lucide-react';
@@ -133,7 +132,6 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
             >
               <Volume2
                 size={24}
-                fill={colors.secondaryFg}
                 style={{ color: colors.secondaryFg }}
               />
             </button>
