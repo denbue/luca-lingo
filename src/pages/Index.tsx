@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { DictionaryData } from '../types/dictionary';
 import { initialData } from '../data/initialData';
 import DictionaryEntry from '../components/DictionaryEntry';
 import PinEntry from '../components/PinEntry';
 import EditForm from '../components/EditForm';
-import { edit } from 'lucide-react';
+import { Edit } from 'lucide-react';
 
 const Index = () => {
   const [data, setData] = useState<DictionaryData>(initialData);
@@ -56,10 +55,7 @@ const Index = () => {
             className="opacity-20 hover:opacity-40 transition-opacity duration-200"
             style={{ color: '#000000' }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-              <path d="m15 5 4 4"/>
-            </svg>
+            <Edit size={18} />
           </button>
         </div>
 
