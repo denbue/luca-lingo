@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DictionaryEntry as DictionaryEntryType } from '../types/dictionary';
 import { Plus, Minus, Volume2 } from 'lucide-react';
@@ -77,7 +78,7 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
 
       {isExpanded && (
         <div className="px-5 pb-5 animate-accordion-down">
-          <div className="mt-2">
+          <div style={{ marginTop: '8px' }}>
             <p className="font-funnel-sans text-base font-light opacity-80">
               {entry.ipa}
             </p>
