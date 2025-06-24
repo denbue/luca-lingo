@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,6 +19,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'funnel-display': ['Funnel Display', 'sans-serif'],
+				'funnel-sans': ['Funnel Sans', 'sans-serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -61,6 +66,35 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Custom dictionary colors
+				combo1: {
+					'primary-bg': '#F6CBB9',
+					'secondary-bg': '#9A2A1B',
+					'primary-fg': '#000000',
+					'secondary-fg': '#FFFFFF'
+				},
+				combo2: {
+					'primary-bg': '#9A2A1B',
+					'secondary-bg': '#F6CBB9',
+					'primary-fg': '#FFFFFF',
+					'secondary-fg': '#000000'
+				},
+				combo3: {
+					'primary-bg': '#67DEA9',
+					'secondary-bg': '#4B5177',
+					'primary-fg': '#000000',
+					'secondary-fg': '#FFFFFF'
+				},
+				combo4: {
+					'primary-bg': '#4B5177',
+					'secondary-bg': '#FFFFFF',
+					'primary-fg': '#FFFFFF',
+					'secondary-fg': '#000000'
+				},
+				global: {
+					bg: '#F8F9F7',
+					fg: '#000000'
 				}
 			},
 			borderRadius: {
