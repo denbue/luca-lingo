@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry, Definition } from '../types/dictionary';
-import { Plus, Minus, Trash2 } from 'lucide-react';
+import { Plus, Minus, Trash2, Upload } from 'lucide-react';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -41,6 +40,12 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
         entry.id === entryId ? { ...entry, ...updates } : entry
       )
     });
+  };
+
+  const handleAudioUpload = (entryId: string, file: File) => {
+    // Create a URL for the uploaded file
+    const audioUrl = URL.createObjectURL(file);
+    updateEntry(entryId, { audioUrl });
   };
 
   const addDefinition = (entryId: string) => {
@@ -149,6 +154,40 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                       onChange={(e) => updateEntry(entry.id, { ipa: e.target.value })}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-sm"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block font-funnel-sans font-bold mb-1 text-sm">Audio File</label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleAudioUpload(entry.id, file);
+                          }
+                        }}
+                        className="hidden"
+                        id={`audio-${entry.id}`}
+                      />
+                      <label
+                        htmlFor={`audio-${entry.id}`}
+                        className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 font-funnel-sans text-sm"
+                      >
+                        <Upload size={16} />
+                        <span>Upload Audio</span>
+                      </label>
+                      {entry.audioUrl && (
+                        <span className="text-green-600 font-funnel-sans text-sm">✓ Audio uploaded</span>
+                      )}
+                    </div>
+                    {entry.audioUrl && (
+                      <audio controls className="mt-2 w-full">
+                        <source src={entry.audioUrl} type="audio/mpeg" />
+                        Your browser does not support the audio element.
+                      </audio>
+                    )}
                   </div>
 
                   <div>
