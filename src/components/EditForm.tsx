@@ -43,9 +43,27 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   };
 
   const handleAudioUpload = (entryId: string, file: File) => {
-    // Create a URL for the uploaded file
-    const audioUrl = URL.createObjectURL(file);
-    updateEntry(entryId, { audioUrl });
+    // Validate file format
+    const allowedFormats = ['audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg', 'audio/mpeg'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    if (!allowedFormats.includes(file.type)) {
+      alert('Unsupported audio format. Please use MP3, WAV, M4A, or OGG files.');
+      return;
+    }
+    
+    if (file.size > maxSize) {
+      alert('File too large. Please use files smaller than 5MB.');
+      return;
+    }
+
+    // Convert to base64 for proper persistence
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const audioUrl = e.target?.result as string;
+      updateEntry(entryId, { audioUrl });
+    };
+    reader.readAsDataURL(file);
   };
 
   const addDefinition = (entryId: string) => {
@@ -158,10 +176,13 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
 
                   <div>
                     <label className="block font-funnel-sans font-bold mb-1 text-sm">Audio File</label>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Supported formats: MP3, WAV, M4A, OGG • Maximum size: 5MB
+                    </p>
                     <div className="flex items-center space-x-2">
                       <input
                         type="file"
-                        accept="audio/*"
+                        accept=".mp3,.wav,.m4a,.ogg,audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/mpeg"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -183,8 +204,8 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                       )}
                     </div>
                     {entry.audioUrl && (
-                      <audio controls className="mt-2 w-full">
-                        <source src={entry.audioUrl} type="audio/mpeg" />
+                      <audio controls className="mt-2 w-full h-8">
+                        <source src={entry.audioUrl} />
                         Your browser does not support the audio element.
                       </audio>
                     )}

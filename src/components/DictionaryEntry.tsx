@@ -75,7 +75,14 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-5 flex justify-between items-center text-left focus:outline-none"
       >
-        <h2 className="font-funnel-display text-2xl font-bold">{entry.word}</h2>
+        <div className="flex-1">
+          <h2 className="font-funnel-display text-2xl font-bold">{entry.word}</h2>
+          <p 
+            className={`font-funnel-sans text-base font-light opacity-80 mt-2 ${!isExpanded ? 'hidden' : ''}`}
+          >
+            {entry.ipa}
+          </p>
+        </div>
         {isExpanded ? (
           <Minus size={23} style={{ color: colors.primaryFg }} />
         ) : (
@@ -85,12 +92,6 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
 
       {isExpanded && (
         <div className="px-5 pb-5 animate-accordion-down">
-          <div style={{ marginTop: '8px' }}>
-            <p className="font-funnel-sans text-base font-light opacity-80">
-              {entry.ipa}
-            </p>
-          </div>
-
           <div
             className="w-full h-px my-5 opacity-60"
             style={{ backgroundColor: colors.primaryFg }}
