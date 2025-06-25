@@ -1,32 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { DictionaryData } from '../types/dictionary';
-import { initialData } from '../data/initialData';
+
+import React, { useState } from 'react';
 import DictionaryEntry from '../components/DictionaryEntry';
 import PinEntry from '../components/PinEntry';
 import EditForm from '../components/EditForm';
 import { Edit } from 'lucide-react';
+import { useDictionary } from '../hooks/useDictionary';
 
 const Index = () => {
-  const [data, setData] = useState<DictionaryData>(initialData);
+  const { data, loading, saveData } = useDictionary();
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-
-  useEffect(() => {
-    const savedData = localStorage.getItem('lucas-dictionary');
-    if (savedData) {
-      try {
-        setData(JSON.parse(savedData));
-      } catch (error) {
-        console.error('Error loading saved data:', error);
-      }
-    }
-  }, []);
-
-  const saveData = (newData: DictionaryData) => {
-    setData(newData);
-    localStorage.setItem('lucas-dictionary', JSON.stringify(newData));
-    setShowEditForm(false);
-  };
 
   const handleEditClick = () => {
     setShowPinEntry(true);
@@ -44,6 +27,42 @@ const Index = () => {
   const handleEditCancel = () => {
     setShowEditForm(false);
   };
+
+  const handleSave = async (newData: any) => {
+    try {
+      await saveData(newData);
+      setShowEditForm(false);
+    } catch (error) {
+      // Error handling is done in the hook
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9F7' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="font-funnel-sans text-lg">Loading dictionary...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9F7' }}>
+        <div className="text-center">
+          <p className="font-funnel-sans text-lg mb-4">Failed to load dictionary</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F8F9F7' }}>
@@ -86,7 +105,7 @@ const Index = () => {
       {showEditForm && (
         <EditForm
           data={data}
-          onSave={saveData}
+          onSave={handleSave}
           onCancel={handleEditCancel}
         />
       )}

@@ -9,7 +9,115 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      definitions: {
+        Row: {
+          created_at: string | null
+          entry_id: string | null
+          example: string | null
+          grammatical_class: string
+          id: string
+          meaning: string
+          position: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          entry_id?: string | null
+          example?: string | null
+          grammatical_class: string
+          id?: string
+          meaning: string
+          position?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          entry_id?: string | null
+          example?: string | null
+          grammatical_class?: string
+          id?: string
+          meaning?: string
+          position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "definitions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dictionaries: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      dictionary_entries: {
+        Row: {
+          audio_url: string | null
+          color_combo: number | null
+          created_at: string | null
+          dictionary_id: string | null
+          id: string
+          ipa: string | null
+          origin: string | null
+          position: number | null
+          updated_at: string | null
+          word: string
+        }
+        Insert: {
+          audio_url?: string | null
+          color_combo?: number | null
+          created_at?: string | null
+          dictionary_id?: string | null
+          id?: string
+          ipa?: string | null
+          origin?: string | null
+          position?: number | null
+          updated_at?: string | null
+          word: string
+        }
+        Update: {
+          audio_url?: string | null
+          color_combo?: number | null
+          created_at?: string | null
+          dictionary_id?: string | null
+          id?: string
+          ipa?: string | null
+          origin?: string | null
+          position?: number | null
+          updated_at?: string | null
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dictionary_entries_dictionary_id_fkey"
+            columns: ["dictionary_id"]
+            isOneToOne: false
+            referencedRelation: "dictionaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
