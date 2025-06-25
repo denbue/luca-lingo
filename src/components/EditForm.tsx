@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry, Definition } from '../types/dictionary';
 import { Plus, Minus, Trash2, Upload } from 'lucide-react';
@@ -8,15 +9,20 @@ interface EditFormProps {
   onCancel: () => void;
 }
 
+// Helper function to generate proper UUIDs
+const generateUUID = () => {
+  return crypto.randomUUID();
+};
+
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   const [formData, setFormData] = useState<DictionaryData>(data);
 
   const addEntry = () => {
     const newEntry: DictionaryEntry = {
-      id: Date.now().toString(),
+      id: generateUUID(), // Use proper UUID
       word: '',
       ipa: '',
-      definitions: [{ id: Date.now().toString(), grammaticalClass: '', meaning: '' }],
+      definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }], // Use proper UUID
       origin: '',
       colorCombo: ((formData.entries.length % 4) + 1) as 1 | 2 | 3 | 4
     };
@@ -68,7 +74,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
 
   const addDefinition = (entryId: string) => {
     const newDefinition: Definition = {
-      id: Date.now().toString(),
+      id: generateUUID(), // Use proper UUID
       grammaticalClass: '',
       meaning: ''
     };
