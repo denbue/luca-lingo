@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DictionaryData, DictionaryEntry, Definition } from '@/types/dictionary';
@@ -6,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 
 // Helper function to generate proper UUIDs
-const generateUUID = () => {
+const generateUUID = (): string => {
   return crypto.randomUUID();
 };
 
@@ -62,7 +63,7 @@ export const useDictionary = () => {
       // Transform the data to match our existing format and sort alphabetically
       const transformedEntries: DictionaryEntry[] = entries
         .map(entry => ({
-          id: entry.id,
+          id: entry.id as string,
           word: entry.word,
           ipa: entry.ipa || '',
           origin: entry.origin || '',
@@ -71,7 +72,7 @@ export const useDictionary = () => {
           definitions: entry.definitions
             .sort((a: any, b: any) => a.position - b.position)
             .map((def: any) => ({
-              id: def.id,
+              id: def.id as string,
               grammaticalClass: def.grammatical_class,
               meaning: def.meaning,
               example: def.example || undefined
@@ -95,7 +96,7 @@ export const useDictionary = () => {
       if (transformedEntries.length === 0) {
         await migrateFromLocalStorage(dictionaryData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading dictionary:', error);
       toast({
         title: "Error loading dictionary",
@@ -118,7 +119,7 @@ export const useDictionary = () => {
         console.log('Migrating data from localStorage to Supabase...');
         
         // Convert old string IDs to proper UUIDs and sort alphabetically
-        const migratedData = {
+        const migratedData: DictionaryData = {
           title: localData.title || currentData.title,
           description: localData.description || currentData.description,
           entries: localData.entries
@@ -143,7 +144,7 @@ export const useDictionary = () => {
           description: "Your dictionary has been moved to the cloud for sharing",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error migrating from localStorage:', error);
       toast({
         title: "Migration failed",
@@ -159,7 +160,7 @@ export const useDictionary = () => {
       console.log('Saving dictionary data to Supabase:', newData);
 
       // Sort entries alphabetically and assign color combos before saving
-      const sortedData = {
+      const sortedData: DictionaryData = {
         ...newData,
         entries: assignColorCombos([...newData.entries].sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())))
       };
@@ -258,7 +259,7 @@ export const useDictionary = () => {
       // Reload data to reflect changes
       await loadData();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving dictionary:', error);
       toast({
         title: "Error saving changes",
