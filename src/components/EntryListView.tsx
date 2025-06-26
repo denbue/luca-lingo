@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft } from 'lucide-react';
 
 interface EntryListViewProps {
   data: DictionaryData;
@@ -9,11 +9,24 @@ interface EntryListViewProps {
   onAddEntry: () => void;
   onDeleteEntry: (entryId: string) => void;
   onEditMetadata: () => void;
+  onBack: () => void;
 }
 
-const EntryListView = ({ data, onEditEntry, onAddEntry, onDeleteEntry, onEditMetadata }: EntryListViewProps) => {
+const EntryListView = ({ data, onEditEntry, onAddEntry, onDeleteEntry, onEditMetadata, onBack }: EntryListViewProps) => {
   return (
     <div className="space-y-6">
+      <div className="flex items-center space-x-3">
+        <button
+          onClick={onBack}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h3 className="font-funnel-display text-lg font-bold">Back</h3>
+      </div>
+
+      <h2 className="font-funnel-display text-2xl font-bold">Edit Dictionary</h2>
+
       {/* Dictionary metadata section */}
       <div className="border border-gray-300 rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">

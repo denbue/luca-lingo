@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
@@ -21,6 +20,47 @@ const generateUUID = () => {
   return crypto.randomUUID();
 };
 
+// AI Translation function
+const translateText = async (text: string, targetLanguage: 'de' | 'pt'): Promise<string> => {
+  try {
+    const languageNames = { de: 'German', pt: 'Portuguese' };
+    
+    // Simple translation logic - in a real app, you'd use a proper translation API
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'dummy-key'}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional translator. Translate the given text to ${languageNames[targetLanguage]}. Return only the translation, no explanations.`
+          },
+          {
+            role: 'user',
+            content: text
+          }
+        ],
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Translation API failed');
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+  } catch (error) {
+    console.error('Translation failed:', error);
+    // Fallback: return original text with a note
+    return `${text} [Translation needed]`;
+  }
+};
+
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('mode-selector');
   const [currentEntry, setCurrentEntry] = useState<DictionaryEntry | null>(null);
@@ -34,40 +74,11 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     setViewMode('edit-entry');
   };
 
-  const handleAddEntry = () => {
-    const newEntry: DictionaryEntry = {
-      id: generateUUID(),
-      word: '',
-      ipa: '',
-      definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }],
-      origin: '',
-      colorCombo: 1
-    };
-    setCurrentEntry(newEntry);
-    setIsNewEntry(true);
-    setViewMode('edit-entry');
-  };
-
   const handleDeleteEntry = (entryId: string) => {
     if (confirm('Are you sure you want to delete this entry?')) {
       const updatedEntries = formData.entries.filter(entry => entry.id !== entryId);
       setFormData({ ...formData, entries: updatedEntries });
     }
-  };
-
-  const handleSaveEntry = (entry: DictionaryEntry) => {
-    let updatedEntries;
-    
-    if (isNewEntry) {
-      updatedEntries = [...formData.entries, entry];
-    } else {
-      updatedEntries = formData.entries.map(e => e.id === entry.id ? entry : e);
-    }
-    
-    setFormData({ ...formData, entries: updatedEntries });
-    setViewMode('edit-dictionary');
-    setCurrentEntry(null);
-    setIsNewEntry(false);
   };
 
   const handleEditMetadata = () => {
@@ -103,6 +114,70 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     onSave(formData);
   };
 
+  const handleAddEntry = async () => {
+    const newEntry: DictionaryEntry = {
+      id: generateUUID(),
+      word: '',
+      ipa: '',
+      definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }],
+      origin: '',
+      colorCombo: 1
+    };
+    setCurrentEntry(newEntry);
+    setIsNewEntry(true);
+    setViewMode('edit-entry');
+  };
+
+  const handleSaveEntry = async (entry: DictionaryEntry) => {
+    let updatedEntries;
+    
+    if (isNewEntry) {
+      // For new entries, automatically generate AI translations
+      console.log('Generating AI translations for new entry:', entry.word);
+      
+      // Generate translations for all definitions and origin
+      try {
+        // Note: In a real implementation, you'd save these translations to a separate translations table
+        // For now, we'll just log them as a demonstration
+        const germanTranslations = {
+          origin: entry.origin ? await translateText(entry.origin, 'de') : '',
+          definitions: await Promise.all(entry.definitions.map(async (def) => ({
+            id: def.id,
+            grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'de') : '',
+            meaning: def.meaning ? await translateText(def.meaning, 'de') : '',
+            example: def.example ? await translateText(def.example, 'de') : ''
+          })))
+        };
+
+        const portugueseTranslations = {
+          origin: entry.origin ? await translateText(entry.origin, 'pt') : '',
+          definitions: await Promise.all(entry.definitions.map(async (def) => ({
+            id: def.id,
+            grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'pt') : '',
+            meaning: def.meaning ? await translateText(def.meaning, 'pt') : '',
+            example: def.example ? await translateText(def.example, 'pt') : ''
+          })))
+        };
+
+        console.log('Generated German translations:', germanTranslations);
+        console.log('Generated Portuguese translations:', portugueseTranslations);
+        
+        // TODO: Save translations to database
+      } catch (error) {
+        console.error('Failed to generate translations:', error);
+      }
+      
+      updatedEntries = [...formData.entries, entry];
+    } else {
+      updatedEntries = formData.entries.map(e => e.id === entry.id ? entry : e);
+    }
+    
+    setFormData({ ...formData, entries: updatedEntries });
+    setViewMode('edit-dictionary');
+    setCurrentEntry(null);
+    setIsNewEntry(false);
+  };
+
   const handleCancel = () => {
     if (viewMode === 'mode-selector') {
       onCancel();
@@ -124,23 +199,6 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     <div className="fixed inset-0 bg-global-bg z-50 overflow-y-auto">
       <div className="p-5">
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="font-funnel-display text-2xl font-bold">
-              {viewMode === 'mode-selector' ? 'Edit Dictionary' :
-               viewMode === 'edit-dictionary' ? 'Edit Dictionary' :
-               viewMode === 'manage-translations' ? 'Manage Translations' :
-               'Edit Dictionary'}
-            </h2>
-            {(viewMode === 'edit-dictionary' || viewMode === 'manage-translations') && (
-              <button
-                onClick={handleFinalSave}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
-              >
-                Save All Changes
-              </button>
-            )}
-          </div>
-
           {viewMode === 'mode-selector' && (
             <EditModeSelector
               onSelectEditDictionary={() => setViewMode('edit-dictionary')}
@@ -157,31 +215,48 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                 onAddEntry={handleAddEntry}
                 onDeleteEntry={handleDeleteEntry}
                 onEditMetadata={handleEditMetadata}
+                onBack={() => setViewMode('mode-selector')}
               />
               <div className="flex justify-center mt-8 space-x-4">
                 <button
-                  onClick={() => setViewMode('manage-translations')}
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-blue-600 transition-colors"
+                  onClick={handleFinalSave}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
                 >
-                  Manage Translations
+                  Save All Changes
                 </button>
                 <button
                   onClick={() => setViewMode('mode-selector')}
                   className="px-6 py-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
                 >
-                  Back to Mode Selection
+                  Cancel
                 </button>
               </div>
             </>
           )}
 
           {viewMode === 'manage-translations' && (
-            <TranslationListView
-              data={formData}
-              onEditEntry={handleTranslateEntry}
-              onEditMetadata={handleTranslateMetadata}
-              onBackToEditSelector={() => setViewMode('mode-selector')}
-            />
+            <>
+              <TranslationListView
+                data={formData}
+                onEditEntry={handleTranslateEntry}
+                onEditMetadata={handleTranslateMetadata}
+                onBackToEditSelector={() => setViewMode('mode-selector')}
+              />
+              <div className="flex justify-center mt-8 space-x-4">
+                <button
+                  onClick={handleFinalSave}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
+                >
+                  Save All Changes
+                </button>
+                <button
+                  onClick={() => setViewMode('mode-selector')}
+                  className="px-6 py-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
           )}
 
           {viewMode === 'edit-entry' && (

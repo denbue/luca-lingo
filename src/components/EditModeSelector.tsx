@@ -18,8 +18,10 @@ const EditModeSelector = ({ onSelectEditDictionary, onSelectManageTranslations, 
         >
           <ArrowLeft size={20} />
         </button>
-        <h3 className="font-funnel-display text-lg font-bold">Choose editing mode</h3>
+        <h3 className="font-funnel-display text-lg font-bold">Back</h3>
       </div>
+
+      <h2 className="font-funnel-display text-2xl font-bold">Choose editing mode</h2>
 
       <div className="space-y-4">
         <button

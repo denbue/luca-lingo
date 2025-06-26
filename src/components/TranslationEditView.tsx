@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DictionaryEntry } from '../types/dictionary';
 import { ArrowLeft } from 'lucide-react';
@@ -50,10 +49,10 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
         >
           <ArrowLeft size={20} />
         </button>
-        <h3 className="font-funnel-display text-lg font-bold">
-          Translate "{entry.word}"
-        </h3>
+        <h3 className="font-funnel-display text-lg font-bold">Back</h3>
       </div>
+
+      <h2 className="font-funnel-display text-2xl font-bold">Edit "{entry.word}"</h2>
 
       <div className="space-y-6">
         {/* German Translations */}

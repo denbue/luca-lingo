@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { DictionaryData } from '../types/dictionary';
-import { Edit } from 'lucide-react';
+import { Edit, ArrowLeft } from 'lucide-react';
 
 interface TranslationListViewProps {
   data: DictionaryData;
@@ -13,15 +13,17 @@ interface TranslationListViewProps {
 const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSelector }: TranslationListViewProps) => {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-funnel-display text-2xl font-bold">Manage Translations</h2>
+      <div className="flex items-center space-x-3">
         <button
           onClick={onBackToEditSelector}
-          className="px-4 py-2 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
+          className="text-gray-500 hover:text-gray-700"
         >
-          Back to Edit Mode
+          <ArrowLeft size={20} />
         </button>
+        <h3 className="font-funnel-display text-lg font-bold">Back</h3>
       </div>
+
+      <h2 className="font-funnel-display text-2xl font-bold">Manage Translations</h2>
 
       {/* Dictionary metadata sections */}
       <div className="space-y-4">
