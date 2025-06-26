@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DictionaryData, DictionaryEntry, Definition } from '@/types/dictionary';
