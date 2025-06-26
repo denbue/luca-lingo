@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
-import { DictionaryData, DictionaryEntry, Definition } from '../types/dictionary';
-import { Plus, Minus, Trash2, Upload, X } from 'lucide-react';
+import { DictionaryData, DictionaryEntry } from '../types/dictionary';
+import EntryListView from './EntryListView';
+import EntryEditView from './EntryEditView';
+import MetadataEditView from './MetadataEditView';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -9,379 +11,137 @@ interface EditFormProps {
   onCancel: () => void;
 }
 
+type ViewMode = 'list' | 'edit-entry' | 'edit-metadata';
+
 // Helper function to generate proper UUIDs
 const generateUUID = () => {
   return crypto.randomUUID();
 };
 
-// Helper function to extract filename from base64 data URL
-const getFilenameFromDataUrl = (dataUrl: string): string => {
-  // For uploaded files, we'll store filename in a data attribute or use a default
-  return 'audio-file'; // Fallback name
-};
-
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
-  // Sort entries alphabetically by word when initializing form data
-  const sortedData = {
-    ...data,
-    entries: [...data.entries].sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()))
-  };
-  
-  const [formData, setFormData] = useState<DictionaryData>(sortedData);
-  const [audioFileNames, setAudioFileNames] = useState<Record<string, string>>({});
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [currentEntry, setCurrentEntry] = useState<DictionaryEntry | null>(null);
+  const [isNewEntry, setIsNewEntry] = useState(false);
+  const [formData, setFormData] = useState<DictionaryData>(data);
 
-  const addEntry = () => {
+  const handleEditEntry = (entry: DictionaryEntry) => {
+    setCurrentEntry(entry);
+    setIsNewEntry(false);
+    setViewMode('edit-entry');
+  };
+
+  const handleAddEntry = () => {
     const newEntry: DictionaryEntry = {
       id: generateUUID(),
       word: '',
       ipa: '',
       definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }],
       origin: '',
-      colorCombo: ((formData.entries.length % 4) + 1) as 1 | 2 | 3 | 4
+      colorCombo: 1 // Will be assigned properly when saved
     };
-    
-    // Add new entry and re-sort alphabetically
-    const updatedEntries = [...formData.entries, newEntry].sort((a, b) => 
-      a.word.toLowerCase().localeCompare(b.word.toLowerCase())
-    );
-    
-    setFormData({
-      ...formData,
-      entries: updatedEntries
-    });
+    setCurrentEntry(newEntry);
+    setIsNewEntry(true);
+    setViewMode('edit-entry');
   };
 
-  const removeEntry = (entryId: string) => {
-    setFormData({
-      ...formData,
-      entries: formData.entries.filter(entry => entry.id !== entryId)
-    });
-    // Clean up filename tracking
-    const newFileNames = { ...audioFileNames };
-    delete newFileNames[entryId];
-    setAudioFileNames(newFileNames);
+  const handleDeleteEntry = (entryId: string) => {
+    if (confirm('Are you sure you want to delete this entry?')) {
+      const updatedEntries = formData.entries.filter(entry => entry.id !== entryId);
+      setFormData({ ...formData, entries: updatedEntries });
+    }
   };
 
-  const updateEntry = (entryId: string, updates: Partial<DictionaryEntry>) => {
-    const updatedEntries = formData.entries.map(entry =>
-      entry.id === entryId ? { ...entry, ...updates } : entry
-    );
+  const handleSaveEntry = (entry: DictionaryEntry) => {
+    let updatedEntries;
     
-    // Re-sort alphabetically if word was updated
-    if (updates.word !== undefined) {
-      updatedEntries.sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
+    if (isNewEntry) {
+      updatedEntries = [...formData.entries, entry];
+    } else {
+      updatedEntries = formData.entries.map(e => e.id === entry.id ? entry : e);
     }
     
-    setFormData({
-      ...formData,
-      entries: updatedEntries
-    });
+    setFormData({ ...formData, entries: updatedEntries });
+    setViewMode('list');
+    setCurrentEntry(null);
+    setIsNewEntry(false);
   };
 
-  const handleAudioUpload = (entryId: string, file: File) => {
-    // Validate file format
-    const allowedFormats = ['audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg', 'audio/mpeg'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    
-    if (!allowedFormats.includes(file.type)) {
-      alert('Unsupported audio format. Please use MP3, WAV, M4A, or OGG files.');
-      return;
+  const handleEditMetadata = () => {
+    setViewMode('edit-metadata');
+  };
+
+  const handleSaveMetadata = (title: string, description: string) => {
+    setFormData({ ...formData, title, description });
+    setViewMode('list');
+  };
+
+  const handleFinalSave = () => {
+    onSave(formData);
+  };
+
+  const handleCancel = () => {
+    if (viewMode === 'list') {
+      onCancel();
+    } else {
+      setViewMode('list');
+      setCurrentEntry(null);
+      setIsNewEntry(false);
     }
-    
-    if (file.size > maxSize) {
-      alert('File too large. Please use files smaller than 5MB.');
-      return;
-    }
-
-    // Store filename for display
-    setAudioFileNames(prev => ({
-      ...prev,
-      [entryId]: file.name
-    }));
-
-    // Convert to base64 for proper persistence
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const audioUrl = e.target?.result as string;
-      updateEntry(entryId, { audioUrl });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeAudio = (entryId: string) => {
-    updateEntry(entryId, { audioUrl: undefined });
-    const newFileNames = { ...audioFileNames };
-    delete newFileNames[entryId];
-    setAudioFileNames(newFileNames);
-  };
-
-  const addDefinition = (entryId: string) => {
-    const newDefinition: Definition = {
-      id: generateUUID(),
-      grammaticalClass: '',
-      meaning: ''
-    };
-    
-    setFormData({
-      ...formData,
-      entries: formData.entries.map(entry =>
-        entry.id === entryId 
-          ? { ...entry, definitions: [...entry.definitions, newDefinition] }
-          : entry
-      )
-    });
-  };
-
-  const updateDefinition = (entryId: string, defId: string, updates: Partial<Definition>) => {
-    setFormData({
-      ...formData,
-      entries: formData.entries.map(entry =>
-        entry.id === entryId
-          ? {
-              ...entry,
-              definitions: entry.definitions.map(def =>
-                def.id === defId ? { ...def, ...updates } : def
-              )
-            }
-          : entry
-      )
-    });
-  };
-
-  const removeDefinition = (entryId: string, defId: string) => {
-    setFormData({
-      ...formData,
-      entries: formData.entries.map(entry =>
-        entry.id === entryId
-          ? {
-              ...entry,
-              definitions: entry.definitions.filter(def => def.id !== defId)
-            }
-          : entry
-      )
-    });
   };
 
   return (
     <div className="fixed inset-0 bg-global-bg z-50 overflow-y-auto">
       <div className="p-5">
         <div className="mb-8">
-          <h2 className="font-funnel-display text-2xl font-bold mb-4">Edit Dictionary</h2>
-          
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block font-funnel-sans font-bold mb-2">Title</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg font-funnel-sans"
-              />
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="font-funnel-display text-2xl font-bold">Edit Dictionary</h2>
+            {viewMode === 'list' && (
+              <button
+                onClick={handleFinalSave}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
+              >
+                Save All Changes
+              </button>
+            )}
+          </div>
+
+          {viewMode === 'list' && (
+            <EntryListView
+              data={formData}
+              onEditEntry={handleEditEntry}
+              onAddEntry={handleAddEntry}
+              onDeleteEntry={handleDeleteEntry}
+              onEditMetadata={handleEditMetadata}
+            />
+          )}
+
+          {viewMode === 'edit-entry' && (
+            <EntryEditView
+              entry={currentEntry}
+              onSave={handleSaveEntry}
+              onCancel={handleCancel}
+              isNew={isNewEntry}
+            />
+          )}
+
+          {viewMode === 'edit-metadata' && (
+            <MetadataEditView
+              data={formData}
+              onSave={handleSaveMetadata}
+              onCancel={handleCancel}
+            />
+          )}
+
+          {viewMode === 'list' && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={onCancel}
+                className="px-6 py-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
+              >
+                Close Editor
+              </button>
             </div>
-            
-            <div>
-              <label className="block font-funnel-sans font-bold mb-2">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg font-funnel-sans h-20"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {formData.entries.map((entry, index) => (
-              <div key={entry.id} className="border border-gray-300 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-funnel-display text-lg font-bold">Entry {index + 1}</h3>
-                  <button
-                    onClick={() => removeEntry(entry.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block font-funnel-sans font-bold mb-1 text-sm">Word</label>
-                    <input
-                      type="text"
-                      value={entry.word}
-                      onChange={(e) => updateEntry(entry.id, { word: e.target.value })}
-                      className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-funnel-sans font-bold mb-1 text-sm">IPA Pronunciation</label>
-                    <input
-                      type="text"
-                      value={entry.ipa}
-                      onChange={(e) => updateEntry(entry.id, { ipa: e.target.value })}
-                      className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-funnel-sans font-bold mb-1 text-sm">Audio File</label>
-                    <p className="text-xs text-gray-600 mb-2">
-                      Supported formats: MP3, WAV, M4A, OGG • Maximum size: 5MB
-                    </p>
-                    
-                    {entry.audioUrl ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-green-600 font-funnel-sans text-sm">
-                              ✓ {audioFileNames[entry.id] || 'Audio file uploaded'}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => removeAudio(entry.id)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Remove audio"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                        
-                        <audio controls className="w-full h-8">
-                          <source src={entry.audioUrl} />
-                          Your browser does not support the audio element.
-                        </audio>
-                        
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="file"
-                            accept=".mp3,.wav,.m4a,.ogg,audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/mpeg"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleAudioUpload(entry.id, file);
-                              }
-                            }}
-                            className="hidden"
-                            id={`audio-replace-${entry.id}`}
-                          />
-                          <label
-                            htmlFor={`audio-replace-${entry.id}`}
-                            className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 font-funnel-sans text-sm"
-                          >
-                            <Upload size={16} />
-                            <span>Replace Audio</span>
-                          </label>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="file"
-                          accept=".mp3,.wav,.m4a,.ogg,audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/mpeg"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleAudioUpload(entry.id, file);
-                            }
-                          }}
-                          className="hidden"
-                          id={`audio-${entry.id}`}
-                        />
-                        <label
-                          htmlFor={`audio-${entry.id}`}
-                          className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 font-funnel-sans text-sm"
-                        >
-                          <Upload size={16} />
-                          <span>Upload Audio</span>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="block font-funnel-sans font-bold text-sm">Definitions</label>
-                      <button
-                        onClick={() => addDefinition(entry.id)}
-                        className="text-blue-500 hover:text-blue-700"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
-                    
-                    {entry.definitions.map((def) => (
-                      <div key={def.id} className="border border-gray-200 rounded p-3 mb-2">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex-1 space-y-2">
-                            <input
-                              type="text"
-                              placeholder="Grammatical class (e.g., noun, verb)"
-                              value={def.grammaticalClass}
-                              onChange={(e) => updateDefinition(entry.id, def.id, { grammaticalClass: e.target.value })}
-                              className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs"
-                            />
-                            <textarea
-                              placeholder="Meaning/usage description"
-                              value={def.meaning}
-                              onChange={(e) => updateDefinition(entry.id, def.id, { meaning: e.target.value })}
-                              className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs h-16"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Usage example (optional)"
-                              value={def.example || ''}
-                              onChange={(e) => updateDefinition(entry.id, def.id, { example: e.target.value })}
-                              className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs"
-                            />
-                          </div>
-                          {entry.definitions.length > 1 && (
-                            <button
-                              onClick={() => removeDefinition(entry.id, def.id)}
-                              className="ml-2 text-red-500 hover:text-red-700"
-                            >
-                              <Minus size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div>
-                    <label className="block font-funnel-sans font-bold mb-1 text-sm">Origin</label>
-                    <input
-                      type="text"
-                      value={entry.origin}
-                      onChange={(e) => updateEntry(entry.id, { origin: e.target.value })}
-                      className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={addEntry}
-            className="w-full mt-6 p-3 bg-blue-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-blue-600 transition-colors"
-          >
-            Add New Entry
-          </button>
-
-          <div className="flex space-x-4 mt-8">
-            <button
-              onClick={() => onSave(formData)}
-              className="flex-1 p-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
-            >
-              Save Changes
-            </button>
-            <button
-              onClick={onCancel}
-              className="flex-1 p-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>

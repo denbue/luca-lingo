@@ -11,6 +11,14 @@ const generateUUID = () => {
   return crypto.randomUUID();
 };
 
+// Helper function to assign color combos in sequence after alphabetical sorting
+const assignColorCombos = (entries: DictionaryEntry[]): DictionaryEntry[] => {
+  return entries.map((entry, index) => ({
+    ...entry,
+    colorCombo: ((index % 4) + 1) as 1 | 2 | 3 | 4
+  }));
+};
+
 export const useDictionary = () => {
   const [data, setData] = useState<DictionaryData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,10 +80,13 @@ export const useDictionary = () => {
         }))
         .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())); // Sort alphabetically
 
+      // Assign color combos in sequence after alphabetical sorting
+      const entriesWithColors = assignColorCombos(transformedEntries);
+
       const dictionaryData: DictionaryData = {
         title: dictionary.title,
         description: dictionary.description || '',
-        entries: transformedEntries
+        entries: entriesWithColors
       };
 
       console.log('Final dictionary data:', dictionaryData);
@@ -123,6 +134,9 @@ export const useDictionary = () => {
             .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())) // Sort alphabetically
         };
         
+        // Assign color combos in sequence after sorting
+        migratedData.entries = assignColorCombos(migratedData.entries);
+        
         await saveData(migratedData);
         localStorage.removeItem('lucas-dictionary');
         toast({
@@ -145,10 +159,10 @@ export const useDictionary = () => {
     try {
       console.log('Saving dictionary data to Supabase:', newData);
 
-      // Sort entries alphabetically before saving
+      // Sort entries alphabetically and assign color combos before saving
       const sortedData = {
         ...newData,
-        entries: [...newData.entries].sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()))
+        entries: assignColorCombos([...newData.entries].sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())))
       };
 
       // Update dictionary metadata
@@ -295,7 +309,7 @@ export const useDictionary = () => {
           table: 'definitions'
         },
         () => {
-          console.log('Definitions changed, reloading...');
+          console.log('Definitions changed, reloading..');
           loadData();
         }
       )
