@@ -43,7 +43,7 @@ export const useDictionary = () => {
           definitions (*)
         `)
         .eq('dictionary_id', DICTIONARY_ID)
-        .order('position');
+        .order('word'); // Order alphabetically by word
 
       if (entriesError) {
         console.error('Error loading dictionary entries:', entriesError);
@@ -52,23 +52,25 @@ export const useDictionary = () => {
 
       console.log('Dictionary entries loaded:', entries);
 
-      // Transform the data to match our existing format
-      const transformedEntries: DictionaryEntry[] = entries.map(entry => ({
-        id: entry.id,
-        word: entry.word,
-        ipa: entry.ipa || '',
-        origin: entry.origin || '',
-        audioUrl: entry.audio_url || undefined,
-        colorCombo: entry.color_combo as 1 | 2 | 3 | 4,
-        definitions: entry.definitions
-          .sort((a: any, b: any) => a.position - b.position)
-          .map((def: any) => ({
-            id: def.id,
-            grammaticalClass: def.grammatical_class,
-            meaning: def.meaning,
-            example: def.example || undefined
-          }))
-      }));
+      // Transform the data to match our existing format and sort alphabetically
+      const transformedEntries: DictionaryEntry[] = entries
+        .map(entry => ({
+          id: entry.id,
+          word: entry.word,
+          ipa: entry.ipa || '',
+          origin: entry.origin || '',
+          audioUrl: entry.audio_url || undefined,
+          colorCombo: entry.color_combo as 1 | 2 | 3 | 4,
+          definitions: entry.definitions
+            .sort((a: any, b: any) => a.position - b.position)
+            .map((def: any) => ({
+              id: def.id,
+              grammaticalClass: def.grammatical_class,
+              meaning: def.meaning,
+              example: def.example || undefined
+            }))
+        }))
+        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())); // Sort alphabetically
 
       const dictionaryData: DictionaryData = {
         title: dictionary.title,
@@ -105,18 +107,20 @@ export const useDictionary = () => {
       if (localData.entries && localData.entries.length > 0) {
         console.log('Migrating data from localStorage to Supabase...');
         
-        // Convert old string IDs to proper UUIDs
+        // Convert old string IDs to proper UUIDs and sort alphabetically
         const migratedData = {
           title: localData.title || currentData.title,
           description: localData.description || currentData.description,
-          entries: localData.entries.map(entry => ({
-            ...entry,
-            id: generateUUID(), // Generate new UUID
-            definitions: entry.definitions.map(def => ({
-              ...def,
-              id: generateUUID() // Generate new UUID
+          entries: localData.entries
+            .map(entry => ({
+              ...entry,
+              id: generateUUID(), // Generate new UUID
+              definitions: entry.definitions.map(def => ({
+                ...def,
+                id: generateUUID() // Generate new UUID
+              }))
             }))
-          }))
+            .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())) // Sort alphabetically
         };
         
         await saveData(migratedData);
@@ -141,12 +145,18 @@ export const useDictionary = () => {
     try {
       console.log('Saving dictionary data to Supabase:', newData);
 
+      // Sort entries alphabetically before saving
+      const sortedData = {
+        ...newData,
+        entries: [...newData.entries].sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()))
+      };
+
       // Update dictionary metadata
       const { error: dictError } = await supabase
         .from('dictionaries')
         .update({
-          title: newData.title,
-          description: newData.description,
+          title: sortedData.title,
+          description: sortedData.description,
           updated_at: new Date().toISOString()
         })
         .eq('id', DICTIONARY_ID);
@@ -168,8 +178,8 @@ export const useDictionary = () => {
       }
 
       // Insert new entries and definitions
-      for (let i = 0; i < newData.entries.length; i++) {
-        const entry = newData.entries[i];
+      for (let i = 0; i < sortedData.entries.length; i++) {
+        const entry = sortedData.entries[i];
         
         // Ensure we have a proper UUID for the entry
         const entryId = entry.id && entry.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) 

@@ -92,11 +92,6 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
 
       {isExpanded && (
         <div className="px-5 pb-5 animate-accordion-down">
-          <div
-            className="w-full h-px my-5 opacity-60"
-            style={{ backgroundColor: colors.primaryFg }}
-          />
-
           <div className="space-y-5">
             {entry.definitions.map((definition, index) => (
               <div key={definition.id}>
@@ -127,24 +122,28 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
             style={{ backgroundColor: colors.primaryFg }}
           />
 
-          <p className="font-funnel-sans text-base font-light opacity-60 mb-5">
-            {entry.origin}
-          </p>
+          {entry.origin && (
+            <p className="font-funnel-sans text-base font-light opacity-60 mb-5">
+              Origin: {entry.origin}
+            </p>
+          )}
 
-          <div className="flex justify-end">
-            <button
-              onClick={playAudio}
-              className="w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 active:scale-95"
-              style={{
-                backgroundColor: colors.secondaryBg
-              }}
-            >
-              <Volume2
-                size={24}
-                style={{ color: colors.secondaryFg }}
-              />
-            </button>
-          </div>
+          {entry.audioUrl && (
+            <div className="flex justify-end">
+              <button
+                onClick={playAudio}
+                className="w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 active:scale-95"
+                style={{
+                  backgroundColor: colors.secondaryBg
+                }}
+              >
+                <Volume2
+                  size={24}
+                  style={{ color: colors.secondaryFg }}
+                />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

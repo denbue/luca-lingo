@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry, Definition } from '../types/dictionary';
-import { Plus, Minus, Trash2, Upload } from 'lucide-react';
+import { Plus, Minus, Trash2, Upload, X } from 'lucide-react';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -14,21 +14,40 @@ const generateUUID = () => {
   return crypto.randomUUID();
 };
 
+// Helper function to extract filename from base64 data URL
+const getFilenameFromDataUrl = (dataUrl: string): string => {
+  // For uploaded files, we'll store filename in a data attribute or use a default
+  return 'audio-file'; // Fallback name
+};
+
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
-  const [formData, setFormData] = useState<DictionaryData>(data);
+  // Sort entries alphabetically by word when initializing form data
+  const sortedData = {
+    ...data,
+    entries: [...data.entries].sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()))
+  };
+  
+  const [formData, setFormData] = useState<DictionaryData>(sortedData);
+  const [audioFileNames, setAudioFileNames] = useState<Record<string, string>>({});
 
   const addEntry = () => {
     const newEntry: DictionaryEntry = {
-      id: generateUUID(), // Use proper UUID
+      id: generateUUID(),
       word: '',
       ipa: '',
-      definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }], // Use proper UUID
+      definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }],
       origin: '',
       colorCombo: ((formData.entries.length % 4) + 1) as 1 | 2 | 3 | 4
     };
+    
+    // Add new entry and re-sort alphabetically
+    const updatedEntries = [...formData.entries, newEntry].sort((a, b) => 
+      a.word.toLowerCase().localeCompare(b.word.toLowerCase())
+    );
+    
     setFormData({
       ...formData,
-      entries: [...formData.entries, newEntry]
+      entries: updatedEntries
     });
   };
 
@@ -37,14 +56,25 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
       ...formData,
       entries: formData.entries.filter(entry => entry.id !== entryId)
     });
+    // Clean up filename tracking
+    const newFileNames = { ...audioFileNames };
+    delete newFileNames[entryId];
+    setAudioFileNames(newFileNames);
   };
 
   const updateEntry = (entryId: string, updates: Partial<DictionaryEntry>) => {
+    const updatedEntries = formData.entries.map(entry =>
+      entry.id === entryId ? { ...entry, ...updates } : entry
+    );
+    
+    // Re-sort alphabetically if word was updated
+    if (updates.word !== undefined) {
+      updatedEntries.sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
+    }
+    
     setFormData({
       ...formData,
-      entries: formData.entries.map(entry =>
-        entry.id === entryId ? { ...entry, ...updates } : entry
-      )
+      entries: updatedEntries
     });
   };
 
@@ -63,6 +93,12 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
       return;
     }
 
+    // Store filename for display
+    setAudioFileNames(prev => ({
+      ...prev,
+      [entryId]: file.name
+    }));
+
     // Convert to base64 for proper persistence
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -72,9 +108,16 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     reader.readAsDataURL(file);
   };
 
+  const removeAudio = (entryId: string) => {
+    updateEntry(entryId, { audioUrl: undefined });
+    const newFileNames = { ...audioFileNames };
+    delete newFileNames[entryId];
+    setAudioFileNames(newFileNames);
+  };
+
   const addDefinition = (entryId: string) => {
     const newDefinition: Definition = {
-      id: generateUUID(), // Use proper UUID
+      id: generateUUID(),
       grammaticalClass: '',
       meaning: ''
     };
@@ -185,35 +228,73 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                     <p className="text-xs text-gray-600 mb-2">
                       Supported formats: MP3, WAV, M4A, OGG • Maximum size: 5MB
                     </p>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="file"
-                        accept=".mp3,.wav,.m4a,.ogg,audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/mpeg"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleAudioUpload(entry.id, file);
-                          }
-                        }}
-                        className="hidden"
-                        id={`audio-${entry.id}`}
-                      />
-                      <label
-                        htmlFor={`audio-${entry.id}`}
-                        className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 font-funnel-sans text-sm"
-                      >
-                        <Upload size={16} />
-                        <span>Upload Audio</span>
-                      </label>
-                      {entry.audioUrl && (
-                        <span className="text-green-600 font-funnel-sans text-sm">✓ Audio uploaded</span>
-                      )}
-                    </div>
-                    {entry.audioUrl && (
-                      <audio controls className="mt-2 w-full h-8">
-                        <source src={entry.audioUrl} />
-                        Your browser does not support the audio element.
-                      </audio>
+                    
+                    {entry.audioUrl ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-600 font-funnel-sans text-sm">
+                              ✓ {audioFileNames[entry.id] || 'Audio file uploaded'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => removeAudio(entry.id)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Remove audio"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                        
+                        <audio controls className="w-full h-8">
+                          <source src={entry.audioUrl} />
+                          Your browser does not support the audio element.
+                        </audio>
+                        
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="file"
+                            accept=".mp3,.wav,.m4a,.ogg,audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/mpeg"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleAudioUpload(entry.id, file);
+                              }
+                            }}
+                            className="hidden"
+                            id={`audio-replace-${entry.id}`}
+                          />
+                          <label
+                            htmlFor={`audio-replace-${entry.id}`}
+                            className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 font-funnel-sans text-sm"
+                          >
+                            <Upload size={16} />
+                            <span>Replace Audio</span>
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="file"
+                          accept=".mp3,.wav,.m4a,.ogg,audio/mp3,audio/wav,audio/m4a,audio/ogg,audio/mpeg"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleAudioUpload(entry.id, file);
+                            }
+                          }}
+                          className="hidden"
+                          id={`audio-${entry.id}`}
+                        />
+                        <label
+                          htmlFor={`audio-${entry.id}`}
+                          className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 font-funnel-sans text-sm"
+                        >
+                          <Upload size={16} />
+                          <span>Upload Audio</span>
+                        </label>
+                      </div>
                     )}
                   </div>
 
