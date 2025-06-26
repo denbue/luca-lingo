@@ -52,7 +52,11 @@ const EntryListView = ({ data, onEditEntry, onAddEntry, onDeleteEntry, onEditMet
 
         <div className="space-y-2">
           {data.entries.map((entry, index) => (
-            <div key={entry.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+            <div 
+              key={entry.id} 
+              className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+              onClick={() => onEditEntry(entry)}
+            >
               <div className="flex-1">
                 <div className="flex items-center space-x-3">
                   <div 
@@ -78,13 +82,10 @@ const EntryListView = ({ data, onEditEntry, onAddEntry, onDeleteEntry, onEditMet
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => onEditEntry(entry)}
-                  className="text-blue-500 hover:text-blue-700 p-1"
-                >
-                  <Edit size={16} />
-                </button>
-                <button
-                  onClick={() => onDeleteEntry(entry.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteEntry(entry.id);
+                  }}
                   className="text-red-500 hover:text-red-700 p-1"
                 >
                   <Trash2 size={16} />
