@@ -1,118 +1,77 @@
-
-import React, { useState } from 'react';
-import DictionaryEntry from '../components/DictionaryEntry';
-import PinEntry from '../components/PinEntry';
-import EditForm from '../components/EditForm';
-import LanguageSelector from '../components/LanguageSelector';
-import { Edit } from 'lucide-react';
-import { useDictionary } from '../hooks/useDictionary';
+import React, { useState, useEffect } from 'react';
+import { useDictionary } from '@/hooks/useDictionary';
+import { DictionaryData } from '@/types/dictionary';
+import EditForm from '@/components/EditForm';
+import Header from '@/components/Header';
+import PinEntry from '@/components/PinEntry';
+import DictionaryContent from '@/components/DictionaryContent';
 import { LanguageProvider } from '../contexts/LanguageContext';
 
 const Index = () => {
-  const { data, loading, saveData } = useDictionary();
-  const [showPinEntry, setShowPinEntry] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showPinEntry, setShowPinEntry] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const { data, loading, saveData, refetch } = useDictionary();
 
-  const handleEditClick = () => {
-    setShowPinEntry(true);
-  };
-
-  const handlePinSuccess = () => {
-    setShowPinEntry(false);
+  const handleEdit = () => {
     setShowEditForm(true);
   };
 
-  const handlePinCancel = () => {
-    setShowPinEntry(false);
-  };
-
-  const handleEditCancel = () => {
-    setShowEditForm(false);
-  };
-
-  const handleSave = async (newData: any) => {
+  const handleSave = async (newData: DictionaryData) => {
     try {
       await saveData(newData);
       setShowEditForm(false);
     } catch (error) {
-      // Error handling is done in the hook
+      console.error("Error saving data:", error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9F7' }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="font-funnel-sans text-lg">Loading dictionary...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleCancelEdit = () => {
+    setShowEditForm(false);
+  };
 
-  if (!data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9F7' }}>
-        <div className="text-center">
-          <p className="font-funnel-sans text-lg mb-4">Failed to load dictionary</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleTogglePin = () => {
+    setIsPinned(!isPinned);
+  };
+
+  const handlePinSuccess = () => {
+    setShowPinEntry(false);
+    refetch();
+  };
+
+  const handleCancelPin = () => {
+    setShowPinEntry(false);
+  };
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen" style={{ backgroundColor: '#F8F9F7' }}>
-        <div className="p-5">
-          {/* Language selector and Edit button */}
-          <div className="flex justify-between mb-4">
-            <LanguageSelector />
-            <button
-              onClick={handleEditClick}
-              className="opacity-20 hover:opacity-40 transition-opacity duration-200"
-              style={{ color: '#000000' }}
-            >
-              <Edit size={18} />
-            </button>
-          </div>
-
-          {/* Header */}
-          <header className="pt-24 pb-10">
-            <h1 className="font-funnel-display text-5xl font-bold mb-4" style={{ color: '#000000' }}>
-              {data.title}
-            </h1>
-            <p className="font-funnel-sans text-base font-light" style={{ color: '#000000' }}>
-              {data.description}
-            </p>
-          </header>
-
-          {/* Dictionary entries */}
-          <div className="space-y-0">
-            {data.entries.map((entry) => (
-              <DictionaryEntry key={entry.id} entry={entry} />
-            ))}
-          </div>
-        </div>
-
-        {/* PIN Entry Modal */}
-        {showPinEntry && (
-          <PinEntry onSuccess={handlePinSuccess} onCancel={handlePinCancel} />
-        )}
-
-        {/* Edit Form Modal */}
-        {showEditForm && (
-          <EditForm
-            data={data}
-            onSave={handleSave}
-            onCancel={handleEditCancel}
+      <div className="min-h-screen bg-global-bg">
+        <div className="px-5 py-8">
+          <Header 
+            onEdit={handleEdit}
+            onTogglePin={handleTogglePin}
+            isPinned={isPinned}
           />
-        )}
+          
+          {showPinEntry ? (
+            <PinEntry onSuccess={handlePinSuccess} onCancel={handleCancelPin} />
+          ) : (
+            <>
+              <DictionaryContent 
+                data={data}
+                loading={loading}
+              />
+              
+              {showEditForm && data && (
+                <EditForm 
+                  data={data} 
+                  onSave={handleSave} 
+                  onCancel={handleCancelEdit} 
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
     </LanguageProvider>
   );

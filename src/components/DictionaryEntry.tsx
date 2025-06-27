@@ -1,150 +1,140 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Volume2 } from 'lucide-react';
 import { DictionaryEntry as DictionaryEntryType } from '../types/dictionary';
-import { Plus, Minus, Volume2 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DictionaryEntryProps {
   entry: DictionaryEntryType;
+  entryTranslation?: {
+    de?: { origin: string };
+    pt?: { origin: string };
+  };
+  definitionTranslations?: Record<string, {
+    de?: { grammaticalClass: string; meaning: string; example?: string };
+    pt?: { grammaticalClass: string; meaning: string; example?: string };
+  }>;
 }
 
-const colorCombos = {
-  1: {
-    primaryBg: '#F6CBB9',
-    secondaryBg: '#9A2A1B',
-    primaryFg: '#000000',
-    secondaryFg: '#FFFFFF'
-  },
-  2: {
-    primaryBg: '#9A2A1B',
-    secondaryBg: '#F6CBB9',
-    primaryFg: '#FFFFFF',
-    secondaryFg: '#000000'
-  },
-  3: {
-    primaryBg: '#67DEA9',
-    secondaryBg: '#4B5177',
-    primaryFg: '#000000',
-    secondaryFg: '#FFFFFF'
-  },
-  4: {
-    primaryBg: '#4B5177',
-    secondaryBg: '#FFFFFF',
-    primaryFg: '#FFFFFF',
-    secondaryFg: '#000000'
-  }
-};
-
-const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
+const DictionaryEntry = ({ entry, entryTranslation, definitionTranslations }: DictionaryEntryProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const colors = colorCombos[entry.colorCombo];
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { currentLanguage } = useLanguage();
+
+  useEffect(() => {
+    if (entry.audioUrl) {
+      const newAudio = new Audio(entry.audioUrl);
+      setAudio(newAudio);
+      audioRef.current = newAudio;
+    }
+
+    return () => {
+      if (audio) {
+        audio.pause();
+      }
+    };
+  }, [entry.audioUrl]);
 
   const playAudio = () => {
-    if (entry.audioUrl) {
-      const audio = new Audio(entry.audioUrl);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
-    } else {
-      // Create a simple beep sound as fallback
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
+    if (audio) {
+      audio.play();
     }
   };
 
+  const colors: Record<1 | 2 | 3 | 4, string> = {
+    1: '#F6CBB9',
+    2: '#9A2A1B',
+    3: '#67DEA9',
+    4: '#4B5177'
+  };
+
+  const getTranslatedText = (originalText: string, translatedText?: string) => {
+    if (currentLanguage === 'en') return originalText;
+    return translatedText || `${originalText} [Translation needed]`;
+  };
+
+  const entryTranslationData = entryTranslation?.[currentLanguage as 'de' | 'pt'];
+  const translatedOrigin = getTranslatedText(entry.origin, entryTranslationData?.origin);
+
   return (
-    <div
-      className="w-full transition-all duration-300 ease-in-out rounded-[20px]"
-      style={{
-        backgroundColor: colors.primaryBg,
-        color: colors.primaryFg
-      }}
-    >
-      <button
+    <div className="border border-gray-300 rounded-lg overflow-hidden">
+      <div 
+        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-5 flex justify-between items-center text-left focus:outline-none"
       >
-        <div className="flex-1">
-          <h2 className="font-funnel-display text-2xl font-bold">{entry.word}</h2>
-          <p 
-            className={`font-funnel-sans text-base font-light opacity-80 mt-2 ${!isExpanded ? 'hidden' : ''}`}
-          >
-            {entry.ipa}
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div 
+              className="w-4 h-4 rounded-full" 
+              style={{ backgroundColor: colors[entry.colorCombo] }}
+            />
+            <div>
+              <h3 className="font-funnel-display text-lg font-bold">{entry.word}</h3>
+              {entry.ipa && (
+                <p className="font-funnel-sans text-sm text-gray-600">{entry.ipa}</p>
+              )}
+            </div>
+            {entry.audioUrl && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playAudio();
+                }}
+                className="text-blue-500 hover:text-blue-700 transition-colors"
+              >
+                <Volume2 size={20} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </div>
         </div>
-        {isExpanded ? (
-          <Minus size={23} style={{ color: colors.primaryFg }} />
-        ) : (
-          <Plus size={23} style={{ color: colors.primaryFg }} />
-        )}
-      </button>
+      </div>
 
       {isExpanded && (
-        <div className="px-5 pb-5 animate-accordion-down">
-          <div className="space-y-5">
-            {entry.definitions.map((definition, index) => (
-              <div key={definition.id}>
-                <div
-                  className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light mb-3 border-[0.5px]"
-                  style={{
-                    borderColor: colors.primaryFg,
-                    color: colors.primaryFg,
-                    backgroundColor: 'transparent'
-                  }}
-                >
-                  {definition.grammaticalClass}
-                </div>
-                <p className="font-funnel-sans text-base font-bold mb-2">
-                  {definition.meaning}
-                </p>
-                {definition.example && (
-                  <p className="font-funnel-sans text-base font-light italic opacity-80">
-                    "{definition.example}"
+        <div className="px-4 pb-4 border-t border-gray-200">
+          <div className="space-y-4 mt-4">
+            {entry.definitions.map((definition, index) => {
+              const defTranslation = definitionTranslations?.[definition.id]?.[currentLanguage as 'de' | 'pt'];
+              const translatedGrammaticalClass = getTranslatedText(definition.grammaticalClass, defTranslation?.grammaticalClass);
+              const translatedMeaning = getTranslatedText(definition.meaning, defTranslation?.meaning);
+              const translatedExample = definition.example ? getTranslatedText(definition.example, defTranslation?.example) : undefined;
+
+              return (
+                <div key={definition.id} className="space-y-2">
+                  <div className="flex items-start space-x-3">
+                    <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-funnel-sans font-bold">
+                      {translatedGrammaticalClass}
+                    </span>
+                  </div>
+                  <p className="font-funnel-sans text-gray-800 leading-relaxed">
+                    {translatedMeaning}
                   </p>
-                )}
+                  {translatedExample && (
+                    <p className="font-funnel-sans text-sm text-gray-600 italic">
+                      "{translatedExample}"
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+            
+            {translatedOrigin && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="font-funnel-sans text-xs text-gray-500">
+                  <span className="font-bold">Origin:</span> {translatedOrigin}
+                </p>
               </div>
-            ))}
+            )}
           </div>
-
-          <div
-            className="w-full h-px my-5 opacity-60"
-            style={{ backgroundColor: colors.primaryFg }}
-          />
-
-          {entry.origin && (
-            <p className="font-funnel-sans text-base font-light opacity-60 mb-5">
-              Origin: {entry.origin}
-            </p>
-          )}
-
-          {entry.audioUrl && (
-            <div className="flex justify-end">
-              <button
-                onClick={playAudio}
-                className="w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-105 active:scale-95"
-                style={{
-                  backgroundColor: colors.secondaryBg
-                }}
-              >
-                <Volume2
-                  size={24}
-                  style={{ color: colors.secondaryFg }}
-                />
-              </button>
-            </div>
-          )}
         </div>
+      )}
+
+      {entry.audioUrl && (
+        <audio ref={audioRef} preload="none">
+          <source src={entry.audioUrl} type="audio/mpeg" />
+        </audio>
       )}
     </div>
   );

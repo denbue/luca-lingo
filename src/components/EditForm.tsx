@@ -6,6 +6,7 @@ import MetadataEditView from './MetadataEditView';
 import EditModeSelector from './EditModeSelector';
 import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
+import { useTranslations } from '../hooks/useTranslations';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -68,6 +69,8 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   const [formData, setFormData] = useState<DictionaryData>(data);
   const [translationLanguage, setTranslationLanguage] = useState<'de' | 'pt'>('de');
 
+  const { translateText, saveDictionaryTranslation, saveEntryTranslations, saveDefinitionTranslations } = useTranslations();
+
   const handleEditEntry = (entry: DictionaryEntry) => {
     setCurrentEntry(entry);
     setIsNewEntry(false);
@@ -104,8 +107,57 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   };
 
   const handleSaveTranslation = (entryId: string, translations: any) => {
-    // For now, just log the translations - in a real app, you'd save them to the database
-    console.log('Saving translations for entry:', entryId, translations);
+    const entry = formData.entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    // Convert translations to the format expected by the hook
+    const entryTranslations: any = {};
+    const definitionTranslations: any = {};
+
+    if (translations.german) {
+      entryTranslations.german = { origin: translations.german.origin };
+      
+      translations.german.definitions.forEach((def: any, index: number) => {
+        const originalDef = entry.definitions[index];
+        if (originalDef) {
+          definitionTranslations[originalDef.id] = {
+            ...(definitionTranslations[originalDef.id] || {}),
+            german: {
+              grammaticalClass: def.grammaticalClass,
+              meaning: def.meaning,
+              example: def.example
+            }
+          };
+        }
+      });
+    }
+
+    if (translations.portuguese) {
+      entryTranslations.portuguese = { origin: translations.portuguese.origin };
+      
+      translations.portuguese.definitions.forEach((def: any, index: number) => {
+        const originalDef = entry.definitions[index];
+        if (originalDef) {
+          definitionTranslations[originalDef.id] = {
+            ...(definitionTranslations[originalDef.id] || {}),
+            portuguese: {
+              grammaticalClass: def.grammaticalClass,
+              meaning: def.meaning,
+              example: def.example
+            }
+          };
+        }
+      });
+    }
+
+    // Save translations
+    saveEntryTranslations(entryId, entryTranslations);
+    
+    // Save definition translations
+    Object.entries(definitionTranslations).forEach(([defId, translations]) => {
+      saveDefinitionTranslations(defId, translations as any);
+    });
+
     setViewMode('manage-translations');
     setCurrentEntry(null);
   };
@@ -132,37 +184,44 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     let updatedEntries;
     
     if (isNewEntry) {
-      // For new entries, automatically generate AI translations
       console.log('Generating AI translations for new entry:', entry.word);
       
-      // Generate translations for all definitions and origin
       try {
-        // Note: In a real implementation, you'd save these translations to a separate translations table
-        // For now, we'll just log them as a demonstration
-        const germanTranslations = {
-          origin: entry.origin ? await translateText(entry.origin, 'de') : '',
-          definitions: await Promise.all(entry.definitions.map(async (def) => ({
-            id: def.id,
-            grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'de') : '',
-            meaning: def.meaning ? await translateText(def.meaning, 'de') : '',
-            example: def.example ? await translateText(def.example, 'de') : ''
-          })))
-        };
+        // Generate translations for entry origin
+        const germanOrigin = entry.origin ? await translateText(entry.origin, 'de') : '';
+        const portugueseOrigin = entry.origin ? await translateText(entry.origin, 'pt') : '';
 
-        const portugueseTranslations = {
-          origin: entry.origin ? await translateText(entry.origin, 'pt') : '',
-          definitions: await Promise.all(entry.definitions.map(async (def) => ({
-            id: def.id,
-            grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'pt') : '',
-            meaning: def.meaning ? await translateText(def.meaning, 'pt') : '',
-            example: def.example ? await translateText(def.example, 'pt') : ''
-          })))
-        };
+        // Generate translations for definitions
+        const germanDefinitions = await Promise.all(entry.definitions.map(async (def) => ({
+          id: def.id,
+          grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'de') : '',
+          meaning: def.meaning ? await translateText(def.meaning, 'de') : '',
+          example: def.example ? await translateText(def.example, 'de') : ''
+        })));
 
-        console.log('Generated German translations:', germanTranslations);
-        console.log('Generated Portuguese translations:', portugueseTranslations);
-        
-        // TODO: Save translations to database
+        const portugueseDefinitions = await Promise.all(entry.definitions.map(async (def) => ({
+          id: def.id,
+          grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'pt') : '',
+          meaning: def.meaning ? await translateText(def.meaning, 'pt') : '',
+          example: def.example ? await translateText(def.example, 'pt') : ''
+        })));
+
+        // Save entry translations
+        await saveEntryTranslations(entry.id, {
+          german: { origin: germanOrigin },
+          portuguese: { origin: portugueseOrigin }
+        });
+
+        // Save definition translations
+        for (let i = 0; i < entry.definitions.length; i++) {
+          const def = entry.definitions[i];
+          await saveDefinitionTranslations(def.id, {
+            german: germanDefinitions[i],
+            portuguese: portugueseDefinitions[i]
+          });
+        }
+
+        console.log('AI translations saved successfully');
       } catch (error) {
         console.error('Failed to generate translations:', error);
       }
@@ -288,7 +347,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
             <MetadataEditView
               data={formData}
               onSave={(title, description) => {
-                console.log(`Saving ${translationLanguage} translation:`, { title, description });
+                saveDictionaryTranslation(translationLanguage, title, description);
                 setViewMode('manage-translations');
               }}
               onCancel={handleCancel}
