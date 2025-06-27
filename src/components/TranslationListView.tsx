@@ -1,7 +1,7 @@
+
 import React from 'react';
 import { DictionaryData } from '../types/dictionary';
 import { Edit, ArrowLeft } from 'lucide-react';
-import { useTranslations } from '../hooks/useTranslations';
 
 interface TranslationListViewProps {
   data: DictionaryData;
@@ -11,18 +11,6 @@ interface TranslationListViewProps {
 }
 
 const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSelector }: TranslationListViewProps) => {
-  const { translations } = useTranslations();
-
-  const getTranslatedText = (originalText: string, translatedText?: string, showNeeded: boolean = true) => {
-    if (!translatedText) {
-      return showNeeded ? `${originalText} (Translation needed)` : originalText;
-    }
-    return translatedText;
-  };
-
-  const germanDict = translations.dictionaryTranslations.de;
-  const portugueseDict = translations.dictionaryTranslations.pt;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-3">
@@ -53,15 +41,11 @@ const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSe
           <div className="space-y-2">
             <div>
               <span className="font-funnel-sans font-bold text-sm">Title: </span>
-              <span className="font-funnel-sans text-sm">
-                {getTranslatedText(data.title, germanDict?.title)}
-              </span>
+              <span className="font-funnel-sans text-sm">{data.title} (German translation needed)</span>
             </div>
             <div>
               <span className="font-funnel-sans font-bold text-sm">Description: </span>
-              <span className="font-funnel-sans text-sm">
-                {getTranslatedText(data.description, germanDict?.description)}
-              </span>
+              <span className="font-funnel-sans text-sm">{data.description} (German translation needed)</span>
             </div>
           </div>
         </div>
@@ -80,15 +64,11 @@ const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSe
           <div className="space-y-2">
             <div>
               <span className="font-funnel-sans font-bold text-sm">Title: </span>
-              <span className="font-funnel-sans text-sm">
-                {getTranslatedText(data.title, portugueseDict?.title)}
-              </span>
+              <span className="font-funnel-sans text-sm">{data.title} (Portuguese translation needed)</span>
             </div>
             <div>
               <span className="font-funnel-sans font-bold text-sm">Description: </span>
-              <span className="font-funnel-sans text-sm">
-                {getTranslatedText(data.description, portugueseDict?.description)}
-              </span>
+              <span className="font-funnel-sans text-sm">{data.description} (Portuguese translation needed)</span>
             </div>
           </div>
         </div>

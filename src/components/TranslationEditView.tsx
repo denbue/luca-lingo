@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { DictionaryEntry } from '../types/dictionary';
 import { ArrowLeft } from 'lucide-react';
-import { useTranslations } from '../hooks/useTranslations';
 
 interface TranslationEditViewProps {
   entry: DictionaryEntry | null;
@@ -10,38 +9,25 @@ interface TranslationEditViewProps {
 }
 
 const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewProps) => {
-  const { translations } = useTranslations();
-  
-  // Get existing translations for this entry
-  const entryTranslation = translations.entryTranslations[entry?.id || ''];
-  const existingGermanTranslations = {
-    definitions: entry?.definitions.map(def => {
-      const defTranslation = translations.definitionTranslations[def.id]?.de;
-      return {
-        id: def.id,
-        grammaticalClass: defTranslation?.grammaticalClass || '',
-        meaning: defTranslation?.meaning || '',
-        example: defTranslation?.example || ''
-      };
-    }) || [],
-    origin: entryTranslation?.de?.origin || ''
-  };
+  const [germanTranslations, setGermanTranslations] = useState({
+    definitions: entry?.definitions.map(def => ({
+      id: def.id,
+      grammaticalClass: '',
+      meaning: '',
+      example: ''
+    })) || [],
+    origin: ''
+  });
 
-  const existingPortugueseTranslations = {
-    definitions: entry?.definitions.map(def => {
-      const defTranslation = translations.definitionTranslations[def.id]?.pt;
-      return {
-        id: def.id,
-        grammaticalClass: defTranslation?.grammaticalClass || '',
-        meaning: defTranslation?.meaning || '',
-        example: defTranslation?.example || ''
-      };
-    }) || [],
-    origin: entryTranslation?.pt?.origin || ''
-  };
-
-  const [germanTranslations, setGermanTranslations] = useState(existingGermanTranslations);
-  const [portugueseTranslations, setPortugueseTranslations] = useState(existingPortugueseTranslations);
+  const [portugueseTranslations, setPortugueseTranslations] = useState({
+    definitions: entry?.definitions.map(def => ({
+      id: def.id,
+      grammaticalClass: '',
+      meaning: '',
+      example: ''
+    })) || [],
+    origin: ''
+  });
 
   const handleSave = () => {
     if (!entry) return;
