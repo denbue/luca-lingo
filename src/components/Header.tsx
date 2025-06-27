@@ -5,11 +5,9 @@ import LanguageSelector from './LanguageSelector';
 
 interface HeaderProps {
   onEdit: () => void;
-  onTogglePin: () => void;
-  isPinned: boolean;
 }
 
-const Header = ({ onEdit, onTogglePin, isPinned }: HeaderProps) => {
+const Header = ({ onEdit }: HeaderProps) => {
   return (
     <div className="flex justify-between items-center mb-8">
       <LanguageSelector />
