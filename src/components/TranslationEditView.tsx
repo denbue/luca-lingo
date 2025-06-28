@@ -36,6 +36,12 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
   const handleSave = () => {
     if (!entry) return;
     
+    console.log('Saving translations from TranslationEditView:', {
+      entryId: entry.id,
+      german: germanTranslations,
+      portuguese: portugueseTranslations
+    });
+    
     onSave(entry.id, {
       german: germanTranslations,
       portuguese: portugueseTranslations
@@ -139,7 +145,10 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
               <input
                 type="text"
                 value={germanTranslations.origin}
-                onChange={(e) => setGermanTranslations(prev => ({ ...prev, origin: e.target.value }))}
+                onChange={(e) => {
+                  console.log('German origin changed to:', e.target.value);
+                  setGermanTranslations(prev => ({ ...prev, origin: e.target.value }));
+                }}
                 className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-sm"
                 placeholder={`German translation of: ${entry.origin}`}
               />
@@ -161,6 +170,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
                       onChange={(e) => {
                         const newDefs = [...germanTranslations.definitions];
                         newDefs[index] = { ...newDefs[index], grammaticalClass: e.target.value };
+                        console.log('German grammatical class changed:', newDefs[index]);
                         setGermanTranslations(prev => ({ ...prev, definitions: newDefs }));
                       }}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs"
@@ -171,6 +181,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
                       onChange={(e) => {
                         const newDefs = [...germanTranslations.definitions];
                         newDefs[index] = { ...newDefs[index], meaning: e.target.value };
+                        console.log('German meaning changed:', newDefs[index]);
                         setGermanTranslations(prev => ({ ...prev, definitions: newDefs }));
                       }}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs h-16"
@@ -182,6 +193,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
                       onChange={(e) => {
                         const newDefs = [...germanTranslations.definitions];
                         newDefs[index] = { ...newDefs[index], example: e.target.value };
+                        console.log('German example changed:', newDefs[index]);
                         setGermanTranslations(prev => ({ ...prev, definitions: newDefs }));
                       }}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs"
@@ -213,7 +225,10 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
               <input
                 type="text"
                 value={portugueseTranslations.origin}
-                onChange={(e) => setPortugueseTranslations(prev => ({ ...prev, origin: e.target.value }))}
+                onChange={(e) => {
+                  console.log('Portuguese origin changed to:', e.target.value);
+                  setPortugueseTranslations(prev => ({ ...prev, origin: e.target.value }));
+                }}
                 className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-sm"
                 placeholder={`Portuguese translation of: ${entry.origin}`}
               />
@@ -235,6 +250,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
                       onChange={(e) => {
                         const newDefs = [...portugueseTranslations.definitions];
                         newDefs[index] = { ...newDefs[index], grammaticalClass: e.target.value };
+                        console.log('Portuguese grammatical class changed:', newDefs[index]);
                         setPortugueseTranslations(prev => ({ ...prev, definitions: newDefs }));
                       }}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs"
@@ -245,6 +261,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
                       onChange={(e) => {
                         const newDefs = [...portugueseTranslations.definitions];
                         newDefs[index] = { ...newDefs[index], meaning: e.target.value };
+                        console.log('Portuguese meaning changed:', newDefs[index]);
                         setPortugueseTranslations(prev => ({ ...prev, definitions: newDefs }));
                       }}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs h-16"
@@ -256,6 +273,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
                       onChange={(e) => {
                         const newDefs = [...portugueseTranslations.definitions];
                         newDefs[index] = { ...newDefs[index], example: e.target.value };
+                        console.log('Portuguese example changed:', newDefs[index]);
                         setPortugueseTranslations(prev => ({ ...prev, definitions: newDefs }));
                       }}
                       className="w-full p-2 border border-gray-300 rounded font-funnel-sans text-xs"

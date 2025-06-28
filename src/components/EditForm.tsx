@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
@@ -72,92 +71,67 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     try {
       console.log('Saving translations for entry:', entryId, translations);
 
-      // Save German translations
-      if (translations.german) {
-        // Save entry translation (origin) only if it has content
-        if (translations.german.origin && translations.german.origin.trim()) {
-          const { error: entryError } = await supabase
-            .from('entry_translations')
+      // Helper function to save entry translation
+      const saveEntryTranslation = async (language: 'de' | 'pt', origin: string) => {
+        if (!origin?.trim()) return;
+        
+        const { error } = await supabase
+          .from('entry_translations')
+          .upsert({
+            entry_id: entryId,
+            language: language,
+            origin: origin.trim()
+          }, {
+            onConflict: 'entry_id,language'
+          });
+
+        if (error) {
+          console.error(`Error saving ${language} entry translation:`, error);
+          throw error;
+        }
+        console.log(`Successfully saved ${language} entry translation`);
+      };
+
+      // Helper function to save definition translations
+      const saveDefinitionTranslations = async (language: 'de' | 'pt', definitions: any[]) => {
+        for (const defTranslation of definitions) {
+          // Only save if at least one field has content
+          const hasContent = defTranslation.grammaticalClass?.trim() || 
+                           defTranslation.meaning?.trim() || 
+                           defTranslation.example?.trim();
+          
+          if (!hasContent) continue;
+
+          const { error } = await supabase
+            .from('definition_translations')
             .upsert({
-              entry_id: entryId,
-              language: 'de',
-              origin: translations.german.origin
+              definition_id: defTranslation.id,
+              language: language,
+              grammatical_class: defTranslation.grammaticalClass?.trim() || null,
+              meaning: defTranslation.meaning?.trim() || null,
+              example: defTranslation.example?.trim() || null
             }, {
-              onConflict: 'entry_id,language'
+              onConflict: 'definition_id,language'
             });
 
-          if (entryError) {
-            console.error('Error saving German entry translation:', entryError);
-            throw entryError;
+          if (error) {
+            console.error(`Error saving ${language} definition translation:`, error);
+            throw error;
           }
+          console.log(`Successfully saved ${language} definition translation for:`, defTranslation.id);
         }
+      };
 
-        // Save definition translations
-        for (const defTranslation of translations.german.definitions) {
-          // Only save if at least one field has content
-          if (defTranslation.grammaticalClass?.trim() || defTranslation.meaning?.trim() || defTranslation.example?.trim()) {
-            const { error: defError } = await supabase
-              .from('definition_translations')
-              .upsert({
-                definition_id: defTranslation.id,
-                language: 'de',
-                grammatical_class: defTranslation.grammaticalClass || null,
-                meaning: defTranslation.meaning || null,
-                example: defTranslation.example || null
-              }, {
-                onConflict: 'definition_id,language'
-              });
-
-            if (defError) {
-              console.error('Error saving German definition translation:', defError);
-              throw defError;
-            }
-          }
-        }
+      // Save German translations
+      if (translations.german) {
+        await saveEntryTranslation('de', translations.german.origin);
+        await saveDefinitionTranslations('de', translations.german.definitions);
       }
 
       // Save Portuguese translations
       if (translations.portuguese) {
-        // Save entry translation (origin) only if it has content
-        if (translations.portuguese.origin && translations.portuguese.origin.trim()) {
-          const { error: entryError } = await supabase
-            .from('entry_translations')
-            .upsert({
-              entry_id: entryId,
-              language: 'pt',
-              origin: translations.portuguese.origin
-            }, {
-              onConflict: 'entry_id,language'
-            });
-
-          if (entryError) {
-            console.error('Error saving Portuguese entry translation:', entryError);
-            throw entryError;
-          }
-        }
-
-        // Save definition translations
-        for (const defTranslation of translations.portuguese.definitions) {
-          // Only save if at least one field has content
-          if (defTranslation.grammaticalClass?.trim() || defTranslation.meaning?.trim() || defTranslation.example?.trim()) {
-            const { error: defError } = await supabase
-              .from('definition_translations')
-              .upsert({
-                definition_id: defTranslation.id,
-                language: 'pt',
-                grammatical_class: defTranslation.grammaticalClass || null,
-                meaning: defTranslation.meaning || null,
-                example: defTranslation.example || null
-              }, {
-                onConflict: 'definition_id,language'
-              });
-
-            if (defError) {
-              console.error('Error saving Portuguese definition translation:', defError);
-              throw defError;
-            }
-          }
-        }
+        await saveEntryTranslation('pt', translations.portuguese.origin);
+        await saveDefinitionTranslations('pt', translations.portuguese.definitions);
       }
 
       toast({
