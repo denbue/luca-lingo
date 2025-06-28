@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      definition_translations: {
+        Row: {
+          created_at: string | null
+          definition_id: string | null
+          example: string | null
+          grammatical_class: string | null
+          id: string
+          language: string
+          meaning: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          definition_id?: string | null
+          example?: string | null
+          grammatical_class?: string | null
+          id?: string
+          language: string
+          meaning?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          definition_id?: string | null
+          example?: string | null
+          grammatical_class?: string | null
+          id?: string
+          language?: string
+          meaning?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "definition_translations_definition_id_fkey"
+            columns: ["definition_id"]
+            isOneToOne: false
+            referencedRelation: "definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       definitions: {
         Row: {
           created_at: string | null
@@ -114,6 +155,79 @@ export type Database = {
             columns: ["dictionary_id"]
             isOneToOne: false
             referencedRelation: "dictionaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dictionary_translations: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          dictionary_id: string | null
+          id: string
+          language: string
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          dictionary_id?: string | null
+          id?: string
+          language: string
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          dictionary_id?: string | null
+          id?: string
+          language?: string
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dictionary_translations_dictionary_id_fkey"
+            columns: ["dictionary_id"]
+            isOneToOne: false
+            referencedRelation: "dictionaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entry_translations: {
+        Row: {
+          created_at: string | null
+          entry_id: string | null
+          id: string
+          language: string
+          origin: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          entry_id?: string | null
+          id?: string
+          language: string
+          origin?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          entry_id?: string | null
+          id?: string
+          language?: string
+          origin?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entry_translations_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_entries"
             referencedColumns: ["id"]
           },
         ]

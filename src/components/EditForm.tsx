@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
@@ -6,6 +7,8 @@ import MetadataEditView from './MetadataEditView';
 import EditModeSelector from './EditModeSelector';
 import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -20,46 +23,7 @@ const generateUUID = () => {
   return crypto.randomUUID();
 };
 
-// AI Translation function
-const translateText = async (text: string, targetLanguage: 'de' | 'pt'): Promise<string> => {
-  try {
-    const languageNames = { de: 'German', pt: 'Portuguese' };
-    
-    // Simple translation logic - in a real app, you'd use a proper translation API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'dummy-key'}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional translator. Translate the given text to ${languageNames[targetLanguage]}. Return only the translation, no explanations.`
-          },
-          {
-            role: 'user',
-            content: text
-          }
-        ],
-        temperature: 0.3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Translation API failed');
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
-  } catch (error) {
-    console.error('Translation failed:', error);
-    // Fallback: return original text with a note
-    return `${text} [Translation needed]`;
-  }
-};
+const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('mode-selector');
@@ -67,6 +31,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   const [isNewEntry, setIsNewEntry] = useState(false);
   const [formData, setFormData] = useState<DictionaryData>(data);
   const [translationLanguage, setTranslationLanguage] = useState<'de' | 'pt'>('de');
+  const { toast } = useToast();
 
   const handleEditEntry = (entry: DictionaryEntry) => {
     setCurrentEntry(entry);
@@ -103,11 +68,83 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     setViewMode('translate-metadata');
   };
 
-  const handleSaveTranslation = (entryId: string, translations: any) => {
-    // For now, just log the translations - in a real app, you'd save them to the database
-    console.log('Saving translations for entry:', entryId, translations);
-    setViewMode('manage-translations');
-    setCurrentEntry(null);
+  const handleSaveTranslation = async (entryId: string, translations: any) => {
+    try {
+      console.log('Saving translations for entry:', entryId, translations);
+
+      // Save German translations
+      if (translations.german) {
+        // Save entry translation (origin)
+        if (translations.german.origin) {
+          await supabase
+            .from('entry_translations')
+            .upsert({
+              entry_id: entryId,
+              language: 'de',
+              origin: translations.german.origin
+            });
+        }
+
+        // Save definition translations
+        for (const defTranslation of translations.german.definitions) {
+          if (defTranslation.grammaticalClass || defTranslation.meaning || defTranslation.example) {
+            await supabase
+              .from('definition_translations')
+              .upsert({
+                definition_id: defTranslation.id,
+                language: 'de',
+                grammatical_class: defTranslation.grammaticalClass,
+                meaning: defTranslation.meaning,
+                example: defTranslation.example
+              });
+          }
+        }
+      }
+
+      // Save Portuguese translations
+      if (translations.portuguese) {
+        // Save entry translation (origin)
+        if (translations.portuguese.origin) {
+          await supabase
+            .from('entry_translations')
+            .upsert({
+              entry_id: entryId,
+              language: 'pt',
+              origin: translations.portuguese.origin
+            });
+        }
+
+        // Save definition translations
+        for (const defTranslation of translations.portuguese.definitions) {
+          if (defTranslation.grammaticalClass || defTranslation.meaning || defTranslation.example) {
+            await supabase
+              .from('definition_translations')
+              .upsert({
+                definition_id: defTranslation.id,
+                language: 'pt',
+                grammatical_class: defTranslation.grammaticalClass,
+                meaning: defTranslation.meaning,
+                example: defTranslation.example
+              });
+          }
+        }
+      }
+
+      toast({
+        title: "Translations saved",
+        description: "Entry translations have been saved successfully",
+      });
+
+      setViewMode('manage-translations');
+      setCurrentEntry(null);
+    } catch (error: any) {
+      console.error('Error saving translations:', error);
+      toast({
+        title: "Error saving translations",
+        description: error.message || "Failed to save translations",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFinalSave = () => {
@@ -132,41 +169,6 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     let updatedEntries;
     
     if (isNewEntry) {
-      // For new entries, automatically generate AI translations
-      console.log('Generating AI translations for new entry:', entry.word);
-      
-      // Generate translations for all definitions and origin
-      try {
-        // Note: In a real implementation, you'd save these translations to a separate translations table
-        // For now, we'll just log them as a demonstration
-        const germanTranslations = {
-          origin: entry.origin ? await translateText(entry.origin, 'de') : '',
-          definitions: await Promise.all(entry.definitions.map(async (def) => ({
-            id: def.id,
-            grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'de') : '',
-            meaning: def.meaning ? await translateText(def.meaning, 'de') : '',
-            example: def.example ? await translateText(def.example, 'de') : ''
-          })))
-        };
-
-        const portugueseTranslations = {
-          origin: entry.origin ? await translateText(entry.origin, 'pt') : '',
-          definitions: await Promise.all(entry.definitions.map(async (def) => ({
-            id: def.id,
-            grammaticalClass: def.grammaticalClass ? await translateText(def.grammaticalClass, 'pt') : '',
-            meaning: def.meaning ? await translateText(def.meaning, 'pt') : '',
-            example: def.example ? await translateText(def.example, 'pt') : ''
-          })))
-        };
-
-        console.log('Generated German translations:', germanTranslations);
-        console.log('Generated Portuguese translations:', portugueseTranslations);
-        
-        // TODO: Save translations to database
-      } catch (error) {
-        console.error('Failed to generate translations:', error);
-      }
-      
       updatedEntries = [...formData.entries, entry];
     } else {
       updatedEntries = formData.entries.map(e => e.id === entry.id ? entry : e);
