@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Language, LANGUAGES } from '../types/translations';
 
@@ -7,36 +7,38 @@ const LanguageSelector = () => {
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.language-selector')) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen]);
+
   const handleLanguageSelect = (language: Language) => {
+    console.log('Selecting language:', language);
     setCurrentLanguage(language);
     setIsOpen(false);
   };
 
   return (
-    <div className="relative">
+    <div className="relative language-selector">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light border-[0.5px] border-black bg-transparent hover:bg-gray-100 transition-colors"
       >
         {LANGUAGES[currentLanguage]}
       </button>
-
-      {isOpen && (
-        <select
-          value={currentLanguage}
-          onChange={(e) => handleLanguageSelect(e.target.value as Language)}
-          onBlur={() => setIsOpen(false)}
-          className="absolute top-0 left-0 w-full opacity-0 cursor-pointer"
-          size={3}
-          autoFocus
-        >
-          {Object.entries(LANGUAGES).map(([code, name]) => (
-            <option key={code} value={code}>
-              {name}
-            </option>
-          ))}
-        </select>
-      )}
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-32">

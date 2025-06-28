@@ -16,14 +16,25 @@ export const useTranslation = () => {
         body: { text, targetLanguage, context }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Translation error:', error);
+        throw error;
+      }
       
       return data.translation || '';
     } catch (error: any) {
       console.error('Translation error:', error);
+      
+      let errorMessage = "Failed to translate text";
+      if (error.message?.includes('rate limit')) {
+        errorMessage = "Translation service is temporarily busy. Please try again in a few minutes.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Translation failed",
-        description: error.message || "Failed to translate text",
+        description: errorMessage,
         variant: "destructive"
       });
       return '';

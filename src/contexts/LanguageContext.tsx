@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Language } from '../types/translations';
 
 interface LanguageContextType {
@@ -22,7 +22,22 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider = ({ children }: LanguageProviderProps) => {
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
+  const [currentLanguage, setCurrentLanguageState] = useState<Language>('en');
+
+  // Load saved language on mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('dictionary-language') as Language;
+    if (savedLanguage && ['en', 'de', 'pt'].includes(savedLanguage)) {
+      setCurrentLanguageState(savedLanguage);
+    }
+  }, []);
+
+  // Save language when it changes
+  const setCurrentLanguage = (language: Language) => {
+    console.log('Setting language to:', language);
+    setCurrentLanguageState(language);
+    localStorage.setItem('dictionary-language', language);
+  };
 
   return (
     <LanguageContext.Provider value={{ currentLanguage, setCurrentLanguage }}>

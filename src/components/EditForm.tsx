@@ -74,58 +74,88 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
 
       // Save German translations
       if (translations.german) {
-        // Save entry translation (origin)
-        if (translations.german.origin) {
-          await supabase
+        // Save entry translation (origin) only if it has content
+        if (translations.german.origin && translations.german.origin.trim()) {
+          const { error: entryError } = await supabase
             .from('entry_translations')
             .upsert({
               entry_id: entryId,
               language: 'de',
               origin: translations.german.origin
+            }, {
+              onConflict: 'entry_id,language'
             });
+
+          if (entryError) {
+            console.error('Error saving German entry translation:', entryError);
+            throw entryError;
+          }
         }
 
         // Save definition translations
         for (const defTranslation of translations.german.definitions) {
-          if (defTranslation.grammaticalClass || defTranslation.meaning || defTranslation.example) {
-            await supabase
+          // Only save if at least one field has content
+          if (defTranslation.grammaticalClass?.trim() || defTranslation.meaning?.trim() || defTranslation.example?.trim()) {
+            const { error: defError } = await supabase
               .from('definition_translations')
               .upsert({
                 definition_id: defTranslation.id,
                 language: 'de',
-                grammatical_class: defTranslation.grammaticalClass,
-                meaning: defTranslation.meaning,
-                example: defTranslation.example
+                grammatical_class: defTranslation.grammaticalClass || null,
+                meaning: defTranslation.meaning || null,
+                example: defTranslation.example || null
+              }, {
+                onConflict: 'definition_id,language'
               });
+
+            if (defError) {
+              console.error('Error saving German definition translation:', defError);
+              throw defError;
+            }
           }
         }
       }
 
       // Save Portuguese translations
       if (translations.portuguese) {
-        // Save entry translation (origin)
-        if (translations.portuguese.origin) {
-          await supabase
+        // Save entry translation (origin) only if it has content
+        if (translations.portuguese.origin && translations.portuguese.origin.trim()) {
+          const { error: entryError } = await supabase
             .from('entry_translations')
             .upsert({
               entry_id: entryId,
               language: 'pt',
               origin: translations.portuguese.origin
+            }, {
+              onConflict: 'entry_id,language'
             });
+
+          if (entryError) {
+            console.error('Error saving Portuguese entry translation:', entryError);
+            throw entryError;
+          }
         }
 
         // Save definition translations
         for (const defTranslation of translations.portuguese.definitions) {
-          if (defTranslation.grammaticalClass || defTranslation.meaning || defTranslation.example) {
-            await supabase
+          // Only save if at least one field has content
+          if (defTranslation.grammaticalClass?.trim() || defTranslation.meaning?.trim() || defTranslation.example?.trim()) {
+            const { error: defError } = await supabase
               .from('definition_translations')
               .upsert({
                 definition_id: defTranslation.id,
                 language: 'pt',
-                grammatical_class: defTranslation.grammaticalClass,
-                meaning: defTranslation.meaning,
-                example: defTranslation.example
+                grammatical_class: defTranslation.grammaticalClass || null,
+                meaning: defTranslation.meaning || null,
+                example: defTranslation.example || null
+              }, {
+                onConflict: 'definition_id,language'
               });
+
+            if (defError) {
+              console.error('Error saving Portuguese definition translation:', defError);
+              throw defError;
+            }
           }
         }
       }
