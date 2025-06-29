@@ -5,6 +5,8 @@ import { DictionaryData, DictionaryEntry } from '@/types/dictionary';
 import { Language } from '@/types/translations';
 import { useToast } from '@/hooks/use-toast';
 
+const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
+
 export const useTranslatedContent = (data: DictionaryData | null, language: Language) => {
   const [translatedData, setTranslatedData] = useState<DictionaryData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,10 +28,11 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
     try {
       console.log(`Loading translations for language: ${language}`);
 
-      // Get dictionary translations
+      // Get dictionary translations (title and description)
       const { data: dictTranslations, error: dictError } = await supabase
         .from('dictionary_translations')
         .select('*')
+        .eq('dictionary_id', DICTIONARY_ID)
         .eq('language', language)
         .maybeSingle();
 

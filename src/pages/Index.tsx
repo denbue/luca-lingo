@@ -4,6 +4,7 @@ import DictionaryEntry from '../components/DictionaryEntry';
 import PinEntry from '../components/PinEntry';
 import EditForm from '../components/EditForm';
 import LanguageSelector from '../components/LanguageSelector';
+import SystemLanguageTest from '../components/SystemLanguageTest';
 import { Edit } from 'lucide-react';
 import { useDictionary } from '../hooks/useDictionary';
 import { useTranslatedContent } from '../hooks/useTranslatedContent';
@@ -104,6 +105,9 @@ const DictionaryContent = () => {
           ))}
         </div>
       </div>
+
+      {/* System Language Test Component */}
+      <SystemLanguageTest />
 
       {/* PIN Entry Modal */}
       {showPinEntry && (

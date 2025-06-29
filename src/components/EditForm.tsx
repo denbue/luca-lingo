@@ -1,8 +1,10 @@
+
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
 import EntryEditView from './EntryEditView';
 import MetadataEditView from './MetadataEditView';
+import MetadataTranslationEditView from './MetadataTranslationEditView';
 import EditModeSelector from './EditModeSelector';
 import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
@@ -151,6 +153,11 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     }
   };
 
+  const handleSaveMetadataTranslation = () => {
+    // The save is handled by the MetadataTranslationEditView component
+    setViewMode('manage-translations');
+  };
+
   const handleFinalSave = () => {
     onSave(formData);
   };
@@ -291,12 +298,10 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
           )}
 
           {viewMode === 'translate-metadata' && (
-            <MetadataEditView
+            <MetadataTranslationEditView
               data={formData}
-              onSave={(title, description) => {
-                console.log(`Saving ${translationLanguage} translation:`, { title, description });
-                setViewMode('manage-translations');
-              }}
+              language={translationLanguage}
+              onSave={handleSaveMetadataTranslation}
               onCancel={handleCancel}
             />
           )}
