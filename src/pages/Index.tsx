@@ -6,10 +6,13 @@ import EditForm from '../components/EditForm';
 import LanguageSelector from '../components/LanguageSelector';
 import { Edit } from 'lucide-react';
 import { useDictionary } from '../hooks/useDictionary';
-import { LanguageProvider } from '../contexts/LanguageContext';
+import { useTranslatedContent } from '../hooks/useTranslatedContent';
+import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 
-const Index = () => {
+const DictionaryContent = () => {
   const { data, loading, saveData } = useDictionary();
+  const { currentLanguage } = useLanguage();
+  const { translatedData, loading: translationLoading } = useTranslatedContent(data, currentLanguage);
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
 
@@ -39,7 +42,10 @@ const Index = () => {
     }
   };
 
-  if (loading) {
+  const isLoading = loading || translationLoading;
+  const displayData = translatedData || data;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9F7' }}>
         <div className="text-center">
@@ -50,7 +56,7 @@ const Index = () => {
     );
   }
 
-  if (!data) {
+  if (!displayData) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F9F7' }}>
         <div className="text-center">
@@ -67,53 +73,59 @@ const Index = () => {
   }
 
   return (
-    <LanguageProvider>
-      <div className="min-h-screen" style={{ backgroundColor: '#F8F9F7' }}>
-        <div className="p-5">
-          {/* Language selector and Edit button */}
-          <div className="flex justify-between mb-4">
-            <LanguageSelector />
-            <button
-              onClick={handleEditClick}
-              className="opacity-20 hover:opacity-40 transition-opacity duration-200"
-              style={{ color: '#000000' }}
-            >
-              <Edit size={18} />
-            </button>
-          </div>
-
-          {/* Header */}
-          <header className="pt-24 pb-10">
-            <h1 className="font-funnel-display text-5xl font-bold mb-4" style={{ color: '#000000' }}>
-              {data.title}
-            </h1>
-            <p className="font-funnel-sans text-base font-light" style={{ color: '#000000' }}>
-              {data.description}
-            </p>
-          </header>
-
-          {/* Dictionary entries */}
-          <div className="space-y-0">
-            {data.entries.map((entry) => (
-              <DictionaryEntry key={entry.id} entry={entry} />
-            ))}
-          </div>
+    <div className="min-h-screen" style={{ backgroundColor: '#F8F9F7' }}>
+      <div className="p-5">
+        {/* Language selector and Edit button */}
+        <div className="flex justify-between mb-4">
+          <LanguageSelector />
+          <button
+            onClick={handleEditClick}
+            className="opacity-20 hover:opacity-40 transition-opacity duration-200"
+            style={{ color: '#000000' }}
+          >
+            <Edit size={18} />
+          </button>
         </div>
 
-        {/* PIN Entry Modal */}
-        {showPinEntry && (
-          <PinEntry onSuccess={handlePinSuccess} onCancel={handlePinCancel} />
-        )}
+        {/* Header */}
+        <header className="pt-24 pb-10">
+          <h1 className="font-funnel-display text-5xl font-bold mb-4" style={{ color: '#000000' }}>
+            {displayData.title}
+          </h1>
+          <p className="font-funnel-sans text-base font-light" style={{ color: '#000000' }}>
+            {displayData.description}
+          </p>
+        </header>
 
-        {/* Edit Form Modal */}
-        {showEditForm && (
-          <EditForm
-            data={data}
-            onSave={handleSave}
-            onCancel={handleEditCancel}
-          />
-        )}
+        {/* Dictionary entries */}
+        <div className="space-y-0">
+          {displayData.entries.map((entry) => (
+            <DictionaryEntry key={entry.id} entry={entry} />
+          ))}
+        </div>
       </div>
+
+      {/* PIN Entry Modal */}
+      {showPinEntry && (
+        <PinEntry onSuccess={handlePinSuccess} onCancel={handlePinCancel} />
+      )}
+
+      {/* Edit Form Modal */}
+      {showEditForm && data && (
+        <EditForm
+          data={data}
+          onSave={handleSave}
+          onCancel={handleEditCancel}
+        />
+      )}
+    </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <LanguageProvider>
+      <DictionaryContent />
     </LanguageProvider>
   );
 };

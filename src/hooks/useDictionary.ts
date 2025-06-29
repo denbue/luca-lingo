@@ -270,54 +270,9 @@ export const useDictionary = () => {
     }
   };
 
-  // Set up real-time subscriptions
+  // Load data on mount
   useEffect(() => {
     loadData();
-
-    // Subscribe to real-time changes
-    const channel = supabase
-      .channel('dictionary-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dictionaries'
-        },
-        () => {
-          console.log('Dictionary metadata changed, reloading...');
-          loadData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'dictionary_entries'
-        },
-        () => {
-          console.log('Dictionary entries changed, reloading...');
-          loadData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'definitions'
-        },
-        () => {
-          console.log('Definitions changed, reloading..');
-          loadData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   return {

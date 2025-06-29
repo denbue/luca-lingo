@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DictionaryEntry } from '../types/dictionary';
-import { ArrowLeft, Sparkles } from 'lucide-react';
-import { useTranslation } from '../hooks/useTranslation';
+import { ArrowLeft } from 'lucide-react';
+import { useTranslationData } from '../hooks/useTranslationData';
 
 interface TranslationEditViewProps {
   entry: DictionaryEntry | null;
@@ -11,27 +11,13 @@ interface TranslationEditViewProps {
 }
 
 const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewProps) => {
-  const { translateText, isTranslating } = useTranslation();
-  
-  const [germanTranslations, setGermanTranslations] = useState({
-    definitions: entry?.definitions.map(def => ({
-      id: def.id,
-      grammaticalClass: '',
-      meaning: '',
-      example: ''
-    })) || [],
-    origin: ''
-  });
-
-  const [portugueseTranslations, setPortugueseTranslations] = useState({
-    definitions: entry?.definitions.map(def => ({
-      id: def.id,
-      grammaticalClass: '',
-      meaning: '',
-      example: ''
-    })) || [],
-    origin: ''
-  });
+  const {
+    germanTranslations,
+    setGermanTranslations,
+    portugueseTranslations,
+    setPortugueseTranslations,
+    loading
+  } = useTranslationData(entry);
 
   const handleSave = () => {
     if (!entry) return;
@@ -48,67 +34,24 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
     });
   };
 
-  const handleTranslateGerman = async () => {
-    if (!entry) return;
-
-    // Translate origin
-    if (entry.origin) {
-      const translatedOrigin = await translateText(entry.origin, 'de', 'word origin/etymology');
-      setGermanTranslations(prev => ({ ...prev, origin: translatedOrigin }));
-    }
-
-    // Translate definitions
-    const translatedDefinitions = await Promise.all(
-      entry.definitions.map(async (def) => {
-        const [grammaticalClass, meaning, example] = await Promise.all([
-          def.grammaticalClass ? translateText(def.grammaticalClass, 'de', 'grammatical class') : '',
-          def.meaning ? translateText(def.meaning, 'de', 'definition meaning') : '',
-          def.example ? translateText(def.example, 'de', 'usage example') : ''
-        ]);
-
-        return {
-          id: def.id,
-          grammaticalClass,
-          meaning,
-          example
-        };
-      })
-    );
-
-    setGermanTranslations(prev => ({ ...prev, definitions: translatedDefinitions }));
-  };
-
-  const handleTranslatePortuguese = async () => {
-    if (!entry) return;
-
-    // Translate origin
-    if (entry.origin) {
-      const translatedOrigin = await translateText(entry.origin, 'pt', 'word origin/etymology');
-      setPortugueseTranslations(prev => ({ ...prev, origin: translatedOrigin }));
-    }
-
-    // Translate definitions
-    const translatedDefinitions = await Promise.all(
-      entry.definitions.map(async (def) => {
-        const [grammaticalClass, meaning, example] = await Promise.all([
-          def.grammaticalClass ? translateText(def.grammaticalClass, 'pt', 'grammatical class') : '',
-          def.meaning ? translateText(def.meaning, 'pt', 'definition meaning') : '',
-          def.example ? translateText(def.example, 'pt', 'usage example') : ''
-        ]);
-
-        return {
-          id: def.id,
-          grammaticalClass,
-          meaning,
-          example
-        };
-      })
-    );
-
-    setPortugueseTranslations(prev => ({ ...prev, definitions: translatedDefinitions }));
-  };
-
   if (!entry) return null;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center space-x-3">
+          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
+            <ArrowLeft size={20} />
+          </button>
+          <h3 className="font-funnel-display text-lg font-bold">Back</h3>
+        </div>
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="font-funnel-sans text-sm">Loading existing translations...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -127,17 +70,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
       <div className="space-y-6">
         {/* German Translations */}
         <div className="border border-gray-300 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-funnel-display font-bold">[German] Translations</h4>
-            <button
-              onClick={handleTranslateGerman}
-              disabled={isTranslating}
-              className="flex items-center space-x-2 px-3 py-2 bg-purple-500 text-white rounded-lg font-funnel-sans text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              <Sparkles size={16} />
-              <span>{isTranslating ? 'Translating...' : 'Translate with AI'}</span>
-            </button>
-          </div>
+          <h4 className="font-funnel-display font-bold mb-4">[German] Translations</h4>
           
           <div className="space-y-4">
             <div>
@@ -207,17 +140,7 @@ const TranslationEditView = ({ entry, onSave, onCancel }: TranslationEditViewPro
 
         {/* Portuguese Translations */}
         <div className="border border-gray-300 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-funnel-display font-bold">[Portuguese] Translations</h4>
-            <button
-              onClick={handleTranslatePortuguese}
-              disabled={isTranslating}
-              className="flex items-center space-x-2 px-3 py-2 bg-purple-500 text-white rounded-lg font-funnel-sans text-sm hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              <Sparkles size={16} />
-              <span>{isTranslating ? 'Translating...' : 'Translate with AI'}</span>
-            </button>
-          </div>
+          <h4 className="font-funnel-display font-bold mb-4">[Portuguese] Translations</h4>
           
           <div className="space-y-4">
             <div>
