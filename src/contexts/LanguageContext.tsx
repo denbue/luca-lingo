@@ -23,8 +23,14 @@ interface LanguageProviderProps {
 
 // Function to detect system language and map it to supported languages
 const detectSystemLanguage = (): Language => {
-  const systemLanguage = navigator.language.toLowerCase();
+  // Check for simulated language first (for testing purposes)
+  const simulatedLanguage = localStorage.getItem('simulated-language');
+  const systemLanguage = (simulatedLanguage || navigator.language).toLowerCase();
+  
   console.log('Detected system language:', systemLanguage);
+  if (simulatedLanguage) {
+    console.log('Using simulated language for testing:', simulatedLanguage);
+  }
   
   // Check for German variants
   if (systemLanguage.startsWith('de')) {
@@ -60,6 +66,9 @@ export const LanguageProvider = ({ children }: LanguageProviderProps) => {
       setCurrentLanguageState(detectedLanguage);
       localStorage.setItem('dictionary-language', detectedLanguage);
     }
+    
+    // Clean up simulated language after detection
+    localStorage.removeItem('simulated-language');
   }, []);
 
   // Save language when it changes

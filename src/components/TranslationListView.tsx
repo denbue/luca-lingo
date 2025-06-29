@@ -2,6 +2,7 @@
 import React from 'react';
 import { DictionaryData } from '../types/dictionary';
 import { Edit, ArrowLeft } from 'lucide-react';
+import { useDictionaryTranslations } from '../hooks/useDictionaryTranslations';
 
 interface TranslationListViewProps {
   data: DictionaryData;
@@ -11,6 +12,28 @@ interface TranslationListViewProps {
 }
 
 const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSelector }: TranslationListViewProps) => {
+  const { germanTranslation, portugueseTranslation, loading } = useDictionaryTranslations(data);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={onBackToEditSelector}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <h3 className="font-funnel-display text-lg font-bold">Back</h3>
+        </div>
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="font-funnel-sans text-sm">Loading translations...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-3">
@@ -41,11 +64,15 @@ const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSe
           <div className="space-y-2">
             <div>
               <span className="font-funnel-sans font-bold text-sm">Title: </span>
-              <span className="font-funnel-sans text-sm">{data.title} (German translation needed)</span>
+              <span className="font-funnel-sans text-sm">
+                {germanTranslation.title || `${data.title} (German translation needed)`}
+              </span>
             </div>
             <div>
               <span className="font-funnel-sans font-bold text-sm">Description: </span>
-              <span className="font-funnel-sans text-sm">{data.description} (German translation needed)</span>
+              <span className="font-funnel-sans text-sm">
+                {germanTranslation.description || `${data.description} (German translation needed)`}
+              </span>
             </div>
           </div>
         </div>
@@ -64,11 +91,15 @@ const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSe
           <div className="space-y-2">
             <div>
               <span className="font-funnel-sans font-bold text-sm">Title: </span>
-              <span className="font-funnel-sans text-sm">{data.title} (Portuguese translation needed)</span>
+              <span className="font-funnel-sans text-sm">
+                {portugueseTranslation.title || `${data.title} (Portuguese translation needed)`}
+              </span>
             </div>
             <div>
               <span className="font-funnel-sans font-bold text-sm">Description: </span>
-              <span className="font-funnel-sans text-sm">{data.description} (Portuguese translation needed)</span>
+              <span className="font-funnel-sans text-sm">
+                {portugueseTranslation.description || `${data.description} (Portuguese translation needed)`}
+              </span>
             </div>
           </div>
         </div>

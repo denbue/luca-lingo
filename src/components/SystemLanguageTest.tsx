@@ -20,13 +20,12 @@ To test other languages, temporarily change your browser language in settings an
   };
 
   const simulateLanguage = (lang: string) => {
-    // Temporarily override navigator.language for testing
-    Object.defineProperty(navigator, 'language', {
-      writable: true,
-      value: lang
-    });
-    
+    // Clear saved language preference first
     localStorage.removeItem('dictionary-language');
+    
+    // Store the simulated language in localStorage for testing
+    localStorage.setItem('simulated-language', lang);
+    
     alert(`Simulated system language set to: ${lang}. Refreshing page to test detection...`);
     window.location.reload();
   };
