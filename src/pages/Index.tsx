@@ -106,8 +106,8 @@ const DictionaryContent = () => {
         </div>
       </div>
 
-      {/* System Language Test Component */}
-      <SystemLanguageTest />
+      {/* System Language Test Component - Hidden for now */}
+      {/* <SystemLanguageTest /> */}
 
       {/* PIN Entry Modal */}
       {showPinEntry && (
