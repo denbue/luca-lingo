@@ -1,228 +1,217 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
-import EditModeSelector from './EditModeSelector';
-import MetadataEditView from './MetadataEditView';
 import EntryListView from './EntryListView';
 import EntryEditView from './EntryEditView';
+import MetadataEditView from './MetadataEditView';
+import MetadataTranslationEditView from './MetadataTranslationEditView';
+import EditModeSelector from './EditModeSelector';
 import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
-import MetadataTranslationEditView from './MetadataTranslationEditView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface EditFormProps {
   data: DictionaryData;
-  onSave: (data: DictionaryData) => Promise<void>;
+  onSave: (data: DictionaryData) => void;
   onCancel: () => void;
 }
+
+type ViewMode = 'mode-selector' | 'edit-dictionary' | 'manage-translations' | 'edit-entry' | 'edit-metadata' | 'translate-entry' | 'translate-metadata';
+
+// Helper function to generate proper UUIDs
+const generateUUID = () => {
+  return crypto.randomUUID();
+};
 
 const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
-  const [formData, setFormData] = useState<DictionaryData>(data);
-  const [viewMode, setViewMode] = useState<'mode-selector' | 'edit-dictionary' | 'manage-translations' | 'edit-metadata' | 'edit-entry' | 'edit-translation' | 'edit-metadata-translation'>('mode-selector');
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('mode-selector');
+  const [currentEntry, setCurrentEntry] = useState<DictionaryEntry | null>(null);
   const [isNewEntry, setIsNewEntry] = useState(false);
-  const [pendingTranslations, setPendingTranslations] = useState<Map<string, any>>(new Map());
+  const [formData, setFormData] = useState<DictionaryData>(data);
+  const [translationLanguage, setTranslationLanguage] = useState<'de' | 'pt'>('de');
   const { toast } = useToast();
 
-  useEffect(() => {
-    setFormData(data);
-  }, [data]);
-
-  const handleMetadataChange = (title: string, description: string) => {
-    setFormData({
-      ...formData,
-      title: title,
-      description: description
-    });
-  };
-
-  const handleEntryChange = (entryId: string, updates: Partial<DictionaryEntry>) => {
-    setFormData({
-      ...formData,
-      entries: formData.entries.map(entry =>
-        entry.id === entryId ? { ...entry, ...updates } : entry
-      )
-    });
-  };
-
-  const handleAddEntry = () => {
-    setIsNewEntry(true);
+  const handleEditEntry = (entry: DictionaryEntry) => {
+    setCurrentEntry(entry);
+    setIsNewEntry(false);
     setViewMode('edit-entry');
   };
 
-  const handleSaveEntry = (newEntry: DictionaryEntry) => {
-    if (isNewEntry) {
-      setFormData({
-        ...formData,
-        entries: [...formData.entries, newEntry]
-      });
-    } else {
-      setFormData({
-        ...formData,
-        entries: formData.entries.map(entry =>
-          entry.id === newEntry.id ? newEntry : entry
-        )
-      });
-    }
-    setViewMode('edit-dictionary');
-    setIsNewEntry(false);
-  };
-
   const handleDeleteEntry = (entryId: string) => {
-    setFormData({
-      ...formData,
-      entries: formData.entries.filter(entry => entry.id !== entryId)
-    });
+    if (confirm('Are you sure you want to delete this entry?')) {
+      const updatedEntries = formData.entries.filter(entry => entry.id !== entryId);
+      setFormData({ ...formData, entries: updatedEntries });
+    }
   };
 
-  const selectedEntry = selectedEntryId ? formData.entries.find(entry => entry.id === selectedEntryId) : null;
+  const handleEditMetadata = () => {
+    setViewMode('edit-metadata');
+  };
+
+  const handleSaveMetadata = (title: string, description: string) => {
+    setFormData({ ...formData, title, description });
+    setViewMode('edit-dictionary');
+  };
+
+  const handleTranslateEntry = (entryId: string) => {
+    const entry = formData.entries.find(e => e.id === entryId);
+    if (entry) {
+      setCurrentEntry(entry);
+      setViewMode('translate-entry');
+    }
+  };
+
+  const handleTranslateMetadata = (language: 'de' | 'pt') => {
+    setTranslationLanguage(language);
+    setViewMode('translate-metadata');
+  };
 
   const handleSaveTranslation = async (entryId: string, translations: any) => {
-    console.log('Saving translation for entry:', entryId, translations);
-    
-    // Store in pending translations map
-    setPendingTranslations(prev => new Map(prev.set(entryId, translations)));
-    
     try {
-      // Save entry translations
-      if (translations.german) {
-        await saveEntryTranslation(entryId, 'de', translations.german);
-      }
-      if (translations.portuguese) {
-        await saveEntryTranslation(entryId, 'pt', translations.portuguese);
-      }
+      console.log('Saving translations for entry:', entryId, translations);
 
-      toast({
-        title: "Translation saved",
-        description: "Entry translation saved successfully",
-      });
-
-      setViewMode('manage-translations');
-    } catch (error: any) {
-      console.error('Error saving translation:', error);
-      toast({
-        title: "Error saving translation",
-        description: error.message || "Failed to save translation",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const saveEntryTranslation = async (entryId: string, language: 'de' | 'pt', translationData: any) => {
-    try {
-      console.log(`Saving ${language} translation for entry ${entryId}:`, translationData);
-
-      // Save entry origin translation
-      if (translationData.origin) {
-        const { error: entryError } = await supabase
+      // Helper function to save entry translation
+      const saveEntryTranslation = async (language: 'de' | 'pt', origin: string) => {
+        if (!origin?.trim()) return;
+        
+        const { error } = await supabase
           .from('entry_translations')
           .upsert({
             entry_id: entryId,
             language: language,
-            origin: translationData.origin.trim() || null
+            origin: origin.trim()
           }, {
             onConflict: 'entry_id,language'
           });
 
-        if (entryError) {
-          console.error(`Error saving ${language} entry translation:`, entryError);
-          throw entryError;
+        if (error) {
+          console.error(`Error saving ${language} entry translation:`, error);
+          throw error;
         }
-      }
+        console.log(`Successfully saved ${language} entry translation`);
+      };
 
-      // Save definition translations
-      for (const def of translationData.definitions) {
-        if (def.grammaticalClass || def.meaning || def.example) {
-          const { error: defError } = await supabase
+      // Helper function to save definition translations
+      const saveDefinitionTranslations = async (language: 'de' | 'pt', definitions: any[]) => {
+        for (const defTranslation of definitions) {
+          // Only save if at least one field has content
+          const hasContent = defTranslation.grammaticalClass?.trim() || 
+                           defTranslation.meaning?.trim() || 
+                           defTranslation.example?.trim();
+          
+          if (!hasContent) continue;
+
+          const { error } = await supabase
             .from('definition_translations')
             .upsert({
-              definition_id: def.id,
+              definition_id: defTranslation.id,
               language: language,
-              grammatical_class: def.grammaticalClass?.trim() || null,
-              meaning: def.meaning?.trim() || null,
-              example: def.example?.trim() || null
+              grammatical_class: defTranslation.grammaticalClass?.trim() || null,
+              meaning: defTranslation.meaning?.trim() || null,
+              example: defTranslation.example?.trim() || null
             }, {
               onConflict: 'definition_id,language'
             });
 
-          if (defError) {
-            console.error(`Error saving ${language} definition translation:`, defError);
-            throw defError;
+          if (error) {
+            console.error(`Error saving ${language} definition translation:`, error);
+            throw error;
           }
+          console.log(`Successfully saved ${language} definition translation for:`, defTranslation.id);
         }
+      };
+
+      // Save German translations
+      if (translations.german) {
+        await saveEntryTranslation('de', translations.german.origin);
+        await saveDefinitionTranslations('de', translations.german.definitions);
       }
 
-      console.log(`Successfully saved ${language} translation for entry ${entryId}`);
-    } catch (error) {
-      console.error(`Error in saveEntryTranslation for ${language}:`, error);
-      throw error;
-    }
-  };
-
-  const handleSaveMetadataTranslation = async (language: 'de' | 'pt', title: string, description: string) => {
-    try {
-      console.log(`Saving ${language} metadata translation:`, { title, description });
-
-      const { error } = await supabase
-        .from('dictionary_translations')
-        .upsert({
-          dictionary_id: DICTIONARY_ID,
-          language: language,
-          title: title.trim() || null,
-          description: description.trim() || null
-        }, {
-          onConflict: 'dictionary_id,language'
-        });
-
-      if (error) {
-        console.error(`Error saving ${language} metadata translation:`, error);
-        throw error;
+      // Save Portuguese translations
+      if (translations.portuguese) {
+        await saveEntryTranslation('pt', translations.portuguese.origin);
+        await saveDefinitionTranslations('pt', translations.portuguese.definitions);
       }
 
       toast({
-        title: "Translation saved",
-        description: `${language === 'de' ? 'German' : 'Portuguese'} metadata translation saved successfully`,
+        title: "Translations saved",
+        description: "Entry translations have been saved successfully",
       });
 
       setViewMode('manage-translations');
+      setCurrentEntry(null);
     } catch (error: any) {
-      console.error('Error saving metadata translation:', error);
+      console.error('Error saving translations:', error);
       toast({
-        title: "Error saving translation",
-        description: error.message || "Failed to save metadata translation",
+        title: "Error saving translations",
+        description: error.message || "Failed to save translations",
         variant: "destructive"
       });
     }
   };
 
-  const handleSaveAll = async () => {
-    try {
-      console.log('Saving all changes...');
-      
-      // Save the main dictionary data
-      await onSave(formData);
-      
-      // All translations should already be saved individually
-      // No need to save them again here since they're saved immediately
-      console.log('All changes saved successfully');
-      
-    } catch (error: any) {
-      console.error('Error saving changes:', error);
-      toast({
-        title: "Error saving changes",
-        description: error.message || "Failed to save changes",
-        variant: "destructive"
-      });
+  const handleSaveMetadataTranslation = () => {
+    // The save is handled by the MetadataTranslationEditView component
+    setViewMode('manage-translations');
+  };
+
+  const handleFinalSave = () => {
+    onSave(formData);
+  };
+
+  const handleAddEntry = async () => {
+    const newEntry: DictionaryEntry = {
+      id: generateUUID(),
+      word: '',
+      ipa: '',
+      definitions: [{ id: generateUUID(), grammaticalClass: '', meaning: '' }],
+      origin: '',
+      colorCombo: 1
+    };
+    setCurrentEntry(newEntry);
+    setIsNewEntry(true);
+    setViewMode('edit-entry');
+  };
+
+  const handleSaveEntry = async (entry: DictionaryEntry) => {
+    let updatedEntries;
+    
+    if (isNewEntry) {
+      updatedEntries = [...formData.entries, entry];
+    } else {
+      updatedEntries = formData.entries.map(e => e.id === entry.id ? entry : e);
+    }
+    
+    setFormData({ ...formData, entries: updatedEntries });
+    setViewMode('edit-dictionary');
+    setCurrentEntry(null);
+    setIsNewEntry(false);
+  };
+
+  const handleCancel = () => {
+    if (viewMode === 'mode-selector') {
+      onCancel();
+    } else if (viewMode === 'edit-dictionary' || viewMode === 'manage-translations') {
+      setViewMode('mode-selector');
+    } else {
+      // Go back to appropriate parent view
+      if (viewMode === 'edit-entry' || viewMode === 'edit-metadata') {
+        setViewMode('edit-dictionary');
+      } else {
+        setViewMode('manage-translations');
+      }
+      setCurrentEntry(null);
+      setIsNewEntry(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="p-6 overflow-y-auto max-h-[90vh]">
-          
+    <div className="fixed inset-0 bg-global-bg z-50 overflow-y-auto">
+      <div className="p-5">
+        <div className="mb-8">
           {viewMode === 'mode-selector' && (
             <EditModeSelector
               data={formData}
@@ -233,85 +222,89 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
           )}
 
           {viewMode === 'edit-dictionary' && (
-            <EntryListView
-              data={formData}
-              onEditEntry={(entry) => {
-                setSelectedEntryId(entry.id);
-                setIsNewEntry(false);
-                setViewMode('edit-entry');
-              }}
-              onAddEntry={() => {
-                setSelectedEntryId(null);
-                setIsNewEntry(true);
-                setViewMode('edit-entry');
-              }}
-              onDeleteEntry={handleDeleteEntry}
-              onEditMetadata={() => setViewMode('edit-metadata')}
-              onBack={() => setViewMode('mode-selector')}
+            <>
+              <EntryListView
+                data={formData}
+                onEditEntry={handleEditEntry}
+                onAddEntry={handleAddEntry}
+                onDeleteEntry={handleDeleteEntry}
+                onEditMetadata={handleEditMetadata}
+                onBack={() => setViewMode('mode-selector')}
+              />
+              <div className="flex justify-center mt-8 space-x-4">
+                <button
+                  onClick={handleFinalSave}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
+                >
+                  Save All Changes
+                </button>
+                <button
+                  onClick={() => setViewMode('mode-selector')}
+                  className="px-6 py-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+
+          {viewMode === 'manage-translations' && (
+            <>
+              <TranslationListView
+                data={formData}
+                onEditEntry={handleTranslateEntry}
+                onEditMetadata={handleTranslateMetadata}
+                onBackToEditSelector={() => setViewMode('mode-selector')}
+              />
+              <div className="flex justify-center mt-8 space-x-4">
+                <button
+                  onClick={handleFinalSave}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
+                >
+                  Save All Changes
+                </button>
+                <button
+                  onClick={() => setViewMode('mode-selector')}
+                  className="px-6 py-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
+          )}
+
+          {viewMode === 'edit-entry' && (
+            <EntryEditView
+              entry={currentEntry}
+              onSave={handleSaveEntry}
+              onCancel={handleCancel}
+              isNew={isNewEntry}
             />
           )}
 
           {viewMode === 'edit-metadata' && (
             <MetadataEditView
               data={formData}
-              onSave={handleMetadataChange}
-              onCancel={() => setViewMode('edit-dictionary')}
+              onSave={handleSaveMetadata}
+              onCancel={handleCancel}
             />
           )}
 
-          {viewMode === 'edit-entry' && (
-            <EntryEditView
-              entry={selectedEntry}
-              isNew={isNewEntry}
-              onSave={handleSaveEntry}
-              onCancel={() => setViewMode('edit-dictionary')}
-            />
-          )}
-
-          {viewMode === 'manage-translations' && (
-            <TranslationListView
-              data={formData}
-              onEditEntry={(entryId) => {
-                setSelectedEntryId(entryId);
-                setViewMode('edit-translation');
-              }}
-              onEditMetadata={(language) => setViewMode('edit-metadata-translation')}
-              onBackToEditSelector={() => setViewMode('mode-selector')}
-            />
-          )}
-
-          {viewMode === 'edit-translation' && selectedEntry && (
+          {viewMode === 'translate-entry' && (
             <TranslationEditView
-              entry={selectedEntry}
+              entry={currentEntry}
               onSave={handleSaveTranslation}
-              onCancel={() => setViewMode('manage-translations')}
+              onCancel={handleCancel}
             />
           )}
 
-          {viewMode === 'edit-metadata-translation' && (
+          {viewMode === 'translate-metadata' && (
             <MetadataTranslationEditView
               data={formData}
+              language={translationLanguage}
               onSave={handleSaveMetadataTranslation}
-              onCancel={() => setViewMode('manage-translations')}
+              onCancel={handleCancel}
             />
-          )}
-
-          {/* Save/Cancel buttons for dictionary editing mode */}
-          {viewMode === 'edit-dictionary' && (
-            <div className="flex space-x-4 mt-6">
-              <button
-                onClick={handleSaveAll}
-                className="flex-1 p-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
-              >
-                Save All Changes
-              </button>
-              <button
-                onClick={onCancel}
-                className="flex-1 p-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
           )}
         </div>
       </div>
