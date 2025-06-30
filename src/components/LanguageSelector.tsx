@@ -35,7 +35,7 @@ const LanguageSelector = () => {
     <div className="relative language-selector">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light border-[0.5px] border-black bg-transparent hover:bg-gray-100 transition-colors"
+        className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light border-[1px] border-black bg-transparent hover:bg-gray-100 transition-colors"
       >
         {LANGUAGES[currentLanguage]}
       </button>
