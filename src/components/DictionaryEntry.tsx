@@ -96,7 +96,7 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
             {entry.definitions.map((definition, index) => (
               <div key={definition.id}>
                 <div
-                  className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light mb-3 border-[0.5px]"
+                  className="inline-block px-3 py-1 rounded-full text-sm font-funnel-sans font-light mb-3 border-[1px]"
                   style={{
                     borderColor: colors.primaryFg,
                     color: colors.primaryFg,
