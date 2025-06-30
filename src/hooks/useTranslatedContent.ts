@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DictionaryData, DictionaryEntry } from '@/types/dictionary';
 import { Language } from '@/types/translations';
@@ -10,16 +10,24 @@ const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 export const useTranslatedContent = (data: DictionaryData | null, language: Language) => {
   const [translatedData, setTranslatedData] = useState<DictionaryData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
+
+  const forceRefresh = useCallback(() => {
+    console.log('Force refreshing translated content...');
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!data || language === 'en') {
+      console.log(`Setting data directly for language: ${language}`);
       setTranslatedData(data);
       return;
     }
 
+    console.log(`Loading translations for language: ${language} (trigger: ${refreshTrigger})`);
     loadTranslations();
-  }, [data, language]);
+  }, [data, language, refreshTrigger]);
 
   const loadTranslations = async () => {
     if (!data) return;
@@ -38,6 +46,8 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
 
       if (dictError) {
         console.error('Error loading dictionary translations:', dictError);
+      } else {
+        console.log(`Dictionary translations for ${language}:`, dictTranslations);
       }
 
       // Get entry translations
@@ -50,6 +60,8 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
 
       if (entryError) {
         console.error('Error loading entry translations:', entryError);
+      } else {
+        console.log(`Entry translations for ${language}:`, entryTranslations);
       }
 
       // Get definition translations
@@ -62,6 +74,8 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
 
       if (defError) {
         console.error('Error loading definition translations:', defError);
+      } else {
+        console.log(`Definition translations for ${language}:`, definitionTranslations);
       }
 
       // Create translated data structure
@@ -92,7 +106,7 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
         entries: translatedEntries
       };
 
-      console.log('Loaded translated data:', translatedDictionary);
+      console.log(`Final translated data for ${language}:`, translatedDictionary);
       setTranslatedData(translatedDictionary);
 
     } catch (error: any) {
@@ -108,5 +122,5 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
     }
   };
 
-  return { translatedData, loading };
+  return { translatedData, loading, forceRefresh };
 };

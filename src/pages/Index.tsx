@@ -11,9 +11,9 @@ import { useTranslatedContent } from '../hooks/useTranslatedContent';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 
 const DictionaryContent = () => {
-  const { data, loading, saveData } = useDictionary();
+  const { data, loading, saveData, refetch } = useDictionary();
   const { currentLanguage } = useLanguage();
-  const { translatedData, loading: translationLoading } = useTranslatedContent(data, currentLanguage);
+  const { translatedData, loading: translationLoading, forceRefresh } = useTranslatedContent(data, currentLanguage);
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
 
@@ -41,6 +41,12 @@ const DictionaryContent = () => {
     } catch (error) {
       // Error handling is done in the hook
     }
+  };
+
+  const handleRefreshData = async () => {
+    console.log('Refreshing dictionary data and translations...');
+    await refetch();
+    forceRefresh();
   };
 
   const isLoading = loading || translationLoading;
@@ -120,6 +126,7 @@ const DictionaryContent = () => {
           data={data}
           onSave={handleSave}
           onCancel={handleEditCancel}
+          onRefreshData={handleRefreshData}
         />
       )}
     </div>

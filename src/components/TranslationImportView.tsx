@@ -1,21 +1,23 @@
-
 import React, { useState } from 'react';
 import { ArrowLeft, Upload } from 'lucide-react';
 import { DictionaryData } from '../types/dictionary';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TranslationImportViewProps {
   data: DictionaryData;
   language: 'de' | 'pt';
   onBack: () => void;
+  onRefreshData?: () => void;
 }
 
 const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 
-const TranslationImportView = ({ data, language, onBack }: TranslationImportViewProps) => {
+const TranslationImportView = ({ data, language, onBack, onRefreshData }: TranslationImportViewProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
+  const { setCurrentLanguage } = useLanguage();
 
   const parseTranslationFile = (text: string) => {
     const lines = text.split('\n');
@@ -240,7 +242,20 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
         description: `${language === 'de' ? 'German' : 'Portuguese'} translations have been imported and saved.`,
       });
 
-      onBack();
+      console.log(`Successfully imported ${language} translations. Switching to ${language} language and refreshing data.`);
+      
+      // Auto-switch to the imported language
+      setCurrentLanguage(language);
+      
+      // Trigger data refresh if callback provided
+      if (onRefreshData) {
+        onRefreshData();
+      }
+
+      // Small delay to ensure language switch is processed
+      setTimeout(() => {
+        onBack();
+      }, 500);
 
     } catch (error: any) {
       console.error(`Error importing ${language} translations:`, error);
@@ -318,6 +333,7 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
             <li>• Translations are matched by word and definition content</li>
             <li>• Existing translations for the same language will be overwritten</li>
             <li>• Words not found in the dictionary will be skipped</li>
+            <li>• After upload, the app will automatically switch to the imported language</li>
           </ul>
         </div>
       </div>
