@@ -50,8 +50,12 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
         console.log(`Dictionary translations for ${language}:`, dictTranslations);
       }
 
-      // Get entry translations
+      // Get entry IDs and debug them
       const entryIds = data.entries.map(entry => entry.id);
+      console.log(`Looking for entry translations for IDs:`, entryIds);
+      console.log(`Entry words:`, data.entries.map(entry => `${entry.word} (${entry.id})`));
+
+      // Get entry translations
       const { data: entryTranslations, error: entryError } = await supabase
         .from('entry_translations')
         .select('*')
@@ -62,10 +66,22 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
         console.error('Error loading entry translations:', entryError);
       } else {
         console.log(`Entry translations for ${language}:`, entryTranslations);
+        // Debug specific problematic entries
+        const problematicWords = ['Blé/Blá', 'Cuuu'];
+        problematicWords.forEach(word => {
+          const entry = data.entries.find(e => e.word === word);
+          if (entry) {
+            const translation = entryTranslations?.find(t => t.entry_id === entry.id);
+            console.log(`Translation for "${word}" (ID: ${entry.id}):`, translation);
+          }
+        });
       }
 
-      // Get definition translations
+      // Get definition IDs and debug them
       const definitionIds = data.entries.flatMap(entry => entry.definitions.map(def => def.id));
+      console.log(`Looking for definition translations for ${definitionIds.length} definitions`);
+
+      // Get definition translations
       const { data: definitionTranslations, error: defError } = await supabase
         .from('definition_translations')
         .select('*')
@@ -78,12 +94,18 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
         console.log(`Definition translations for ${language}:`, definitionTranslations);
       }
 
-      // Create translated data structure
+      // Create translated data structure with detailed logging
       const translatedEntries = data.entries.map(entry => {
         const entryTranslation = entryTranslations?.find(t => t.entry_id === entry.id);
         
+        console.log(`Processing entry "${entry.word}" (ID: ${entry.id})`);
+        console.log(`- Found entry translation:`, entryTranslation);
+        
         const translatedDefinitions = entry.definitions.map(def => {
           const defTranslation = definitionTranslations?.find(t => t.definition_id === def.id);
+          
+          console.log(`  - Definition "${def.meaning}" (ID: ${def.id})`);
+          console.log(`    - Found translation:`, defTranslation);
           
           return {
             ...def,
@@ -93,11 +115,18 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
           };
         });
 
-        return {
+        const translatedEntry = {
           ...entry,
           origin: entryTranslation?.origin || entry.origin,
           definitions: translatedDefinitions
         };
+
+        // Log specific problematic entries
+        if (['Blé/Blá', 'Cuuu'].includes(entry.word)) {
+          console.log(`Final translated entry for "${entry.word}":`, translatedEntry);
+        }
+
+        return translatedEntry;
       });
 
       const translatedDictionary: DictionaryData = {
