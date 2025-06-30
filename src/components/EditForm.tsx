@@ -30,11 +30,11 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     setFormData(data);
   }, [data]);
 
-  const handleMetadataChange = (newMetadata: { title: string; description: string }) => {
+  const handleMetadataChange = (title: string, description: string) => {
     setFormData({
       ...formData,
-      title: newMetadata.title,
-      description: newMetadata.description
+      title: title,
+      description: description
     });
   };
 
@@ -233,10 +233,38 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
           )}
 
           {viewMode === 'edit-dictionary' && (
+            <EntryListView
+              data={formData}
+              onEditEntry={(entry) => {
+                setSelectedEntryId(entry.id);
+                setIsNewEntry(false);
+                setViewMode('edit-entry');
+              }}
+              onAddEntry={() => {
+                setSelectedEntryId(null);
+                setIsNewEntry(true);
+                setViewMode('edit-entry');
+              }}
+              onDeleteEntry={handleDeleteEntry}
+              onEditMetadata={() => setViewMode('edit-metadata')}
+              onBack={() => setViewMode('mode-selector')}
+            />
+          )}
+
+          {viewMode === 'edit-metadata' && (
             <MetadataEditView
               data={formData}
               onSave={handleMetadataChange}
-              onCancel={() => setViewMode('mode-selector')}
+              onCancel={() => setViewMode('edit-dictionary')}
+            />
+          )}
+
+          {viewMode === 'edit-entry' && (
+            <EntryEditView
+              entry={selectedEntry}
+              isNew={isNewEntry}
+              onSave={handleSaveEntry}
+              onCancel={() => setViewMode('edit-dictionary')}
             />
           )}
 
@@ -247,8 +275,8 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                 setSelectedEntryId(entryId);
                 setViewMode('edit-translation');
               }}
-              onEditMetadata={() => setViewMode('edit-metadata-translation')}
-              onCancel={() => setViewMode('mode-selector')}
+              onEditMetadata={(language) => setViewMode('edit-metadata-translation')}
+              onBackToEditSelector={() => setViewMode('mode-selector')}
             />
           )}
 
