@@ -2,23 +2,38 @@
 import { DictionaryData } from '../types/dictionary';
 
 export const exportDictionaryAsText = (data: DictionaryData) => {
-  let content = `${data.title}\n`;
-  content += `${data.description}\n\n`;
-  content += `--- DICTIONARY ENTRIES ---\n\n`;
+  let content = `DICTIONARY_TITLE: ${data.title}\n`;
+  content += `DICTIONARY_TITLE_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n\n`;
+  
+  content += `DICTIONARY_DESCRIPTION: ${data.description}\n`;
+  content += `DICTIONARY_DESCRIPTION_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n\n`;
+  
+  content += `--- ENTRIES ---\n\n`;
 
   data.entries.forEach((entry, index) => {
-    content += `${index + 1}. ${entry.word}\n`;
-    if (entry.ipa) {
-      content += `   IPA: ${entry.ipa}\n`;
-    }
+    content += `ENTRY_${index + 1}_WORD: ${entry.word}\n`;
+    
     if (entry.origin) {
-      content += `   Origin: ${entry.origin}\n`;
+      content += `ENTRY_${index + 1}_ORIGIN: ${entry.origin}\n`;
+      content += `ENTRY_${index + 1}_ORIGIN_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n`;
+    } else {
+      content += `ENTRY_${index + 1}_ORIGIN: \n`;
+      content += `ENTRY_${index + 1}_ORIGIN_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n`;
     }
     
     entry.definitions.forEach((def, defIndex) => {
-      content += `   ${defIndex + 1}. [${def.grammaticalClass}] ${def.meaning}\n`;
+      const defNum = defIndex + 1;
+      content += `ENTRY_${index + 1}_DEF_${defNum}_CLASS: ${def.grammaticalClass}\n`;
+      content += `ENTRY_${index + 1}_DEF_${defNum}_CLASS_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n`;
+      content += `ENTRY_${index + 1}_DEF_${defNum}_MEANING: ${def.meaning}\n`;
+      content += `ENTRY_${index + 1}_DEF_${defNum}_MEANING_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n`;
+      
       if (def.example) {
-        content += `      Example: ${def.example}\n`;
+        content += `ENTRY_${index + 1}_DEF_${defNum}_EXAMPLE: ${def.example}\n`;
+        content += `ENTRY_${index + 1}_DEF_${defNum}_EXAMPLE_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n`;
+      } else {
+        content += `ENTRY_${index + 1}_DEF_${defNum}_EXAMPLE: \n`;
+        content += `ENTRY_${index + 1}_DEF_${defNum}_EXAMPLE_TRANSLATION: [ADD YOUR TRANSLATION HERE]\n`;
       }
     });
     content += '\n';
@@ -28,7 +43,7 @@ export const exportDictionaryAsText = (data: DictionaryData) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${data.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_dictionary.txt`;
+  a.download = `${data.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_translation_template.txt`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

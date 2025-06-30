@@ -67,9 +67,9 @@ const EditModeSelector = ({
           <div className="flex items-center">
             <Download className="mr-3 h-5 w-5" />
             <div>
-              <h4 className="font-funnel-display font-bold mb-2">Export Dictionary</h4>
+              <h4 className="font-funnel-display font-bold mb-2">Export Translation Template</h4>
               <p className="font-funnel-sans text-sm text-gray-600">
-                Download the English dictionary and all entries as a text file.
+                Download a text file with all dictionary content and translation placeholders ready to fill in.
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ const EditModeSelector = ({
             <div>
               <h4 className="font-funnel-display font-bold mb-2">Import German Translations</h4>
               <p className="font-funnel-sans text-sm text-gray-600">
-                Upload a JSON file with German translations for dictionary entries and metadata.
+                Upload a text file with German translations for dictionary entries and metadata.
               </p>
             </div>
           </div>
@@ -99,7 +99,7 @@ const EditModeSelector = ({
             <div>
               <h4 className="font-funnel-display font-bold mb-2">Import Portuguese Translations</h4>
               <p className="font-funnel-sans text-sm text-gray-600">
-                Upload a JSON file with Portuguese translations for dictionary entries and metadata.
+                Upload a text file with Portuguese translations for dictionary entries and metadata.
               </p>
             </div>
           </div>

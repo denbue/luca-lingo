@@ -17,6 +17,123 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
+  const parseTranslationFile = (text: string) => {
+    const lines = text.split('\n');
+    const translations: any = {
+      dictionary: {},
+      entries: []
+    };
+
+    let currentEntry: any = null;
+    let currentEntryIndex = -1;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine || trimmedLine.startsWith('---')) continue;
+
+      // Parse dictionary translations
+      if (trimmedLine.startsWith('DICTIONARY_TITLE_TRANSLATION:')) {
+        const translation = trimmedLine.replace('DICTIONARY_TITLE_TRANSLATION:', '').trim();
+        if (translation && translation !== '[ADD YOUR TRANSLATION HERE]') {
+          translations.dictionary.title = translation;
+        }
+      } else if (trimmedLine.startsWith('DICTIONARY_DESCRIPTION_TRANSLATION:')) {
+        const translation = trimmedLine.replace('DICTIONARY_DESCRIPTION_TRANSLATION:', '').trim();
+        if (translation && translation !== '[ADD YOUR TRANSLATION HERE]') {
+          translations.dictionary.description = translation;
+        }
+      }
+      // Parse entry translations
+      else if (trimmedLine.match(/^ENTRY_(\d+)_WORD:/)) {
+        const entryNum = parseInt(trimmedLine.match(/^ENTRY_(\d+)_WORD:/)?.[1] || '0');
+        const word = trimmedLine.replace(/^ENTRY_\d+_WORD:/, '').trim();
+        
+        if (entryNum !== currentEntryIndex) {
+          if (currentEntry) {
+            translations.entries.push(currentEntry);
+          }
+          currentEntry = {
+            word: word,
+            origin: '',
+            definitions: []
+          };
+          currentEntryIndex = entryNum;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_ORIGIN_TRANSLATION:/)) {
+        const translation = trimmedLine.replace(/^ENTRY_\d+_ORIGIN_TRANSLATION:/, '').trim();
+        if (translation && translation !== '[ADD YOUR TRANSLATION HERE]' && currentEntry) {
+          currentEntry.origin = translation;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_CLASS:/)) {
+        const matches = trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_CLASS:/);
+        const defNum = parseInt(matches?.[2] || '0');
+        const grammaticalClass = trimmedLine.replace(/^ENTRY_\d+_DEF_\d+_CLASS:/, '').trim();
+        
+        if (currentEntry) {
+          // Ensure we have enough definition slots
+          while (currentEntry.definitions.length < defNum) {
+            currentEntry.definitions.push({
+              grammaticalClass: '',
+              meaning: '',
+              example: '',
+              grammaticalClassTranslation: '',
+              meaningTranslation: '',
+              exampleTranslation: ''
+            });
+          }
+          currentEntry.definitions[defNum - 1].grammaticalClass = grammaticalClass;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_CLASS_TRANSLATION:/)) {
+        const matches = trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_CLASS_TRANSLATION:/);
+        const defNum = parseInt(matches?.[2] || '0');
+        const translation = trimmedLine.replace(/^ENTRY_\d+_DEF_\d+_CLASS_TRANSLATION:/, '').trim();
+        
+        if (translation && translation !== '[ADD YOUR TRANSLATION HERE]' && currentEntry && currentEntry.definitions[defNum - 1]) {
+          currentEntry.definitions[defNum - 1].grammaticalClassTranslation = translation;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_MEANING:/)) {
+        const matches = trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_MEANING:/);
+        const defNum = parseInt(matches?.[2] || '0');
+        const meaning = trimmedLine.replace(/^ENTRY_\d+_DEF_\d+_MEANING:/, '').trim();
+        
+        if (currentEntry && currentEntry.definitions[defNum - 1]) {
+          currentEntry.definitions[defNum - 1].meaning = meaning;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_MEANING_TRANSLATION:/)) {
+        const matches = trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_MEANING_TRANSLATION:/);
+        const defNum = parseInt(matches?.[2] || '0');
+        const translation = trimmedLine.replace(/^ENTRY_\d+_DEF_\d+_MEANING_TRANSLATION:/, '').trim();
+        
+        if (translation && translation !== '[ADD YOUR TRANSLATION HERE]' && currentEntry && currentEntry.definitions[defNum - 1]) {
+          currentEntry.definitions[defNum - 1].meaningTranslation = translation;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_EXAMPLE:/)) {
+        const matches = trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_EXAMPLE:/);
+        const defNum = parseInt(matches?.[2] || '0');
+        const example = trimmedLine.replace(/^ENTRY_\d+_DEF_\d+_EXAMPLE:/, '').trim();
+        
+        if (currentEntry && currentEntry.definitions[defNum - 1]) {
+          currentEntry.definitions[defNum - 1].example = example;
+        }
+      } else if (trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_EXAMPLE_TRANSLATION:/)) {
+        const matches = trimmedLine.match(/^ENTRY_(\d+)_DEF_(\d+)_EXAMPLE_TRANSLATION:/);
+        const defNum = parseInt(matches?.[2] || '0');
+        const translation = trimmedLine.replace(/^ENTRY_\d+_DEF_\d+_EXAMPLE_TRANSLATION:/, '').trim();
+        
+        if (translation && translation !== '[ADD YOUR TRANSLATION HERE]' && currentEntry && currentEntry.definitions[defNum - 1]) {
+          currentEntry.definitions[defNum - 1].exampleTranslation = translation;
+        }
+      }
+    }
+
+    // Don't forget the last entry
+    if (currentEntry) {
+      translations.entries.push(currentEntry);
+    }
+
+    return translations;
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -24,14 +141,9 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
     setIsUploading(true);
     try {
       const text = await file.text();
-      const translations = JSON.parse(text);
+      const translations = parseTranslationFile(text);
 
       console.log(`Importing ${language} translations:`, translations);
-
-      // Validate the structure
-      if (!translations.dictionary || !translations.entries) {
-        throw new Error('Invalid translation file format. Expected dictionary and entries properties.');
-      }
 
       // Import dictionary translations
       if (translations.dictionary.title || translations.dictionary.description) {
@@ -137,37 +249,6 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
     }
   };
 
-  const downloadSampleFile = () => {
-    const sampleData = {
-      dictionary: {
-        title: `[${language.toUpperCase()}] Dictionary Title Translation`,
-        description: `[${language.toUpperCase()}] Dictionary Description Translation`
-      },
-      entries: data.entries.slice(0, 2).map(entry => ({
-        word: entry.word,
-        origin: `[${language.toUpperCase()}] Origin translation for ${entry.word}`,
-        definitions: entry.definitions.map(def => ({
-          grammaticalClass: def.grammaticalClass,
-          meaning: def.meaning,
-          example: def.example || "",
-          grammaticalClassTranslation: `[${language.toUpperCase()}] ${def.grammaticalClass}`,
-          meaningTranslation: `[${language.toUpperCase()}] ${def.meaning}`,
-          exampleTranslation: def.example ? `[${language.toUpperCase()}] ${def.example}` : ""
-        }))
-      }))
-    };
-
-    const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sample-${language}-translations.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-3">
@@ -188,27 +269,24 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="font-funnel-display font-bold mb-2">File Format</h4>
           <p className="font-funnel-sans text-sm text-gray-700 mb-3">
-            Upload a JSON file with translations for dictionary entries and metadata. 
-            The file should contain a "dictionary" object with title and description translations, 
-            and an "entries" array with translations for each word.
+            Upload a text file with translations. Use the "Export Dictionary" function to create a translation template 
+            with all the original content and placeholder lines for translations. Just fill in the translation lines and upload the file back.
           </p>
-          <button
-            onClick={downloadSampleFile}
-            className="text-blue-600 hover:text-blue-800 font-funnel-sans text-sm underline"
-          >
-            Download sample file format
-          </button>
+          <p className="font-funnel-sans text-sm text-gray-600">
+            The template contains lines like "DICTIONARY_TITLE_TRANSLATION: [ADD YOUR TRANSLATION HERE]" - 
+            simply replace the placeholder text with your translations.
+          </p>
         </div>
 
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h4 className="font-funnel-display font-bold mb-2">Upload Translation File</h4>
           <p className="font-funnel-sans text-sm text-gray-600 mb-4">
-            Select a JSON file with {language === 'de' ? 'German' : 'Portuguese'} translations
+            Select a text file with {language === 'de' ? 'German' : 'Portuguese'} translations
           </p>
           <input
             type="file"
-            accept=".json"
+            accept=".txt"
             onChange={handleFileUpload}
             disabled={isUploading}
             className="hidden"
@@ -227,10 +305,11 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h4 className="font-funnel-display font-bold mb-2">Important Notes</h4>
           <ul className="font-funnel-sans text-sm text-gray-700 space-y-1">
+            <li>• Use the "Export Dictionary" function to get the translation template</li>
+            <li>• Replace "[ADD YOUR TRANSLATION HERE]" with your actual translations</li>
             <li>• Translations are matched by word and definition content</li>
             <li>• Existing translations for the same language will be overwritten</li>
             <li>• Words not found in the dictionary will be skipped</li>
-            <li>• Make sure your JSON file is properly formatted</li>
           </ul>
         </div>
       </div>
