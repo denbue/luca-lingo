@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
@@ -17,6 +16,7 @@ interface EditFormProps {
   data: DictionaryData;
   onSave: (data: DictionaryData) => void;
   onCancel: () => void;
+  onRefreshData: () => Promise<void>;
 }
 
 type ViewMode = 'mode-selector' | 'edit-dictionary' | 'manage-translations' | 'edit-entry' | 'edit-metadata' | 'translate-entry' | 'translate-metadata' | 'import-german' | 'import-portuguese';
@@ -28,7 +28,7 @@ const generateUUID = () => {
 
 const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 
-const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
+const EditForm = ({ data, onSave, onCancel, onRefreshData }: EditFormProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('mode-selector');
   const [currentEntry, setCurrentEntry] = useState<DictionaryEntry | null>(null);
   const [isNewEntry, setIsNewEntry] = useState(false);
@@ -313,6 +313,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
               data={data}
               language="de"
               onBack={() => setViewMode('mode-selector')}
+              onRefreshData={onRefreshData}
             />
           )}
 
@@ -321,6 +322,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
               data={data}
               language="pt"
               onBack={() => setViewMode('mode-selector')}
+              onRefreshData={onRefreshData}
             />
           )}
 
