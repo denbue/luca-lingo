@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
@@ -7,6 +8,7 @@ import MetadataTranslationEditView from './MetadataTranslationEditView';
 import EditModeSelector from './EditModeSelector';
 import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
+import TranslationImportView from './TranslationImportView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { exportDictionaryAsText } from '../utils/dictionaryExport';
@@ -17,7 +19,7 @@ interface EditFormProps {
   onCancel: () => void;
 }
 
-type ViewMode = 'mode-selector' | 'edit-dictionary' | 'manage-translations' | 'edit-entry' | 'edit-metadata' | 'translate-entry' | 'translate-metadata';
+type ViewMode = 'mode-selector' | 'edit-dictionary' | 'manage-translations' | 'edit-entry' | 'edit-metadata' | 'translate-entry' | 'translate-metadata' | 'import-german' | 'import-portuguese';
 
 // Helper function to generate proper UUIDs
 const generateUUID = () => {
@@ -227,7 +229,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   const handleCancel = () => {
     if (viewMode === 'mode-selector') {
       onCancel();
-    } else if (viewMode === 'edit-dictionary' || viewMode === 'manage-translations') {
+    } else if (viewMode === 'edit-dictionary' || viewMode === 'manage-translations' || viewMode === 'import-german' || viewMode === 'import-portuguese') {
       setViewMode('mode-selector');
     } else {
       // Go back to appropriate parent view
@@ -254,6 +256,8 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
               data={formData}
               onSelectEditDictionary={() => setViewMode('edit-dictionary')}
               onSelectManageTranslations={() => setViewMode('manage-translations')}
+              onSelectImportGerman={() => setViewMode('import-german')}
+              onSelectImportPortuguese={() => setViewMode('import-portuguese')}
               onCancel={onCancel}
             />
           )}
@@ -302,6 +306,22 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                 </button>
               </div>
             </>
+          )}
+
+          {viewMode === 'import-german' && (
+            <TranslationImportView
+              data={data}
+              language="de"
+              onBack={() => setViewMode('mode-selector')}
+            />
+          )}
+
+          {viewMode === 'import-portuguese' && (
+            <TranslationImportView
+              data={data}
+              language="pt"
+              onBack={() => setViewMode('mode-selector')}
+            />
           )}
 
           {viewMode === 'edit-entry' && (

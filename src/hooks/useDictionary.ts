@@ -154,7 +154,7 @@ export const useDictionary = () => {
     }
   };
 
-  // Save dictionary data to Supabase
+  // Save dictionary data to Supabase - FIXED VERSION THAT PRESERVES TRANSLATIONS
   const saveData = async (newData: DictionaryData) => {
     try {
       console.log('Saving dictionary data to Supabase:', newData);
@@ -180,80 +180,174 @@ export const useDictionary = () => {
         throw dictError;
       }
 
-      // Delete existing entries and definitions
-      const { error: deleteError } = await supabase
+      // Get existing entries to preserve IDs and maintain translation relationships
+      const { data: existingEntries, error: existingError } = await supabase
         .from('dictionary_entries')
-        .delete()
+        .select(`
+          id, word,
+          definitions (id, grammatical_class, meaning, example)
+        `)
         .eq('dictionary_id', DICTIONARY_ID);
 
-      if (deleteError) {
-        console.error('Error deleting existing entries:', deleteError);
-        throw deleteError;
+      if (existingError) {
+        console.error('Error fetching existing entries:', existingError);
+        throw existingError;
       }
 
-      // Insert new entries and definitions
+      const existingEntriesMap = new Map(existingEntries?.map(entry => [entry.word.toLowerCase(), entry]) || []);
+
+      // Process each entry - update existing or create new
       for (let i = 0; i < sortedData.entries.length; i++) {
         const entry = sortedData.entries[i];
+        const existingEntry = existingEntriesMap.get(entry.word.toLowerCase());
         
-        // Ensure we have a proper UUID for the entry
-        const entryId = entry.id && entry.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) 
-          ? entry.id 
-          : generateUUID();
+        let entryId = entry.id;
         
-        console.log('Inserting entry:', { ...entry, id: entryId });
-        
-        // Insert entry
-        const { error: entryError } = await supabase
-          .from('dictionary_entries')
-          .insert({
-            id: entryId,
-            dictionary_id: DICTIONARY_ID,
-            word: entry.word,
-            ipa: entry.ipa,
-            origin: entry.origin,
-            audio_url: entry.audioUrl,
-            color_combo: entry.colorCombo,
-            position: i
-          });
+        if (existingEntry) {
+          // Update existing entry (preserve ID to maintain translations)
+          entryId = existingEntry.id;
+          console.log(`Updating existing entry: ${entry.word} with ID: ${entryId}`);
+          
+          const { error: entryError } = await supabase
+            .from('dictionary_entries')
+            .update({
+              word: entry.word,
+              ipa: entry.ipa,
+              origin: entry.origin,
+              audio_url: entry.audioUrl,
+              color_combo: entry.colorCombo,
+              position: i
+            })
+            .eq('id', entryId);
 
-        if (entryError) {
-          console.error('Error inserting entry:', entryError);
-          throw entryError;
-        }
-
-        // Insert definitions
-        for (let j = 0; j < entry.definitions.length; j++) {
-          const definition = entry.definitions[j];
+          if (entryError) {
+            console.error('Error updating entry:', entryError);
+            throw entryError;
+          }
+        } else {
+          // Create new entry
+          console.log(`Creating new entry: ${entry.word}`);
           
-          // Ensure we have a proper UUID for the definition
-          const definitionId = definition.id && definition.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-            ? definition.id
-            : generateUUID();
-          
-          console.log('Inserting definition:', { ...definition, id: definitionId });
-          
-          const { error: defError } = await supabase
-            .from('definitions')
+          const { error: entryError } = await supabase
+            .from('dictionary_entries')
             .insert({
-              id: definitionId,
-              entry_id: entryId,
-              grammatical_class: definition.grammaticalClass,
-              meaning: definition.meaning,
-              example: definition.example,
-              position: j
+              id: entryId,
+              dictionary_id: DICTIONARY_ID,
+              word: entry.word,
+              ipa: entry.ipa,
+              origin: entry.origin,
+              audio_url: entry.audioUrl,
+              color_combo: entry.colorCombo,
+              position: i
             });
 
-          if (defError) {
-            console.error('Error inserting definition:', defError);
-            throw defError;
+          if (entryError) {
+            console.error('Error inserting entry:', entryError);
+            throw entryError;
+          }
+        }
+
+        // Handle definitions - preserve existing definition IDs where possible
+        const existingDefinitions = existingEntry?.definitions || [];
+        const existingDefsMap = new Map(existingDefinitions.map(def => [
+          `${def.grammatical_class.toLowerCase()}_${def.meaning.toLowerCase()}`, def
+        ]));
+
+        // Delete definitions that no longer exist
+        if (existingDefinitions.length > 0) {
+          const currentDefKeys = entry.definitions.map(def => 
+            `${def.grammaticalClass.toLowerCase()}_${def.meaning.toLowerCase()}`
+          );
+          const defsToDelete = existingDefinitions
+            .filter(def => !currentDefKeys.includes(`${def.grammatical_class.toLowerCase()}_${def.meaning.toLowerCase()}`))
+            .map(def => def.id);
+          
+          if (defsToDelete.length > 0) {
+            const { error: deleteDefError } = await supabase
+              .from('definitions')
+              .delete()
+              .in('id', defsToDelete);
+
+            if (deleteDefError) {
+              console.error('Error deleting outdated definitions:', deleteDefError);
+              throw deleteDefError;
+            }
+          }
+        }
+
+        // Update or insert definitions
+        for (let j = 0; j < entry.definitions.length; j++) {
+          const definition = entry.definitions[j];
+          const defKey = `${definition.grammaticalClass.toLowerCase()}_${definition.meaning.toLowerCase()}`;
+          const existingDef = existingDefsMap.get(defKey);
+
+          if (existingDef) {
+            // Update existing definition (preserve ID to maintain translations)
+            console.log(`Updating existing definition: ${definition.meaning}`);
+            
+            const { error: defError } = await supabase
+              .from('definitions')
+              .update({
+                grammatical_class: definition.grammaticalClass,
+                meaning: definition.meaning,
+                example: definition.example,
+                position: j
+              })
+              .eq('id', existingDef.id);
+
+            if (defError) {
+              console.error('Error updating definition:', defError);
+              throw defError;
+            }
+          } else {
+            // Create new definition
+            console.log(`Creating new definition: ${definition.meaning}`);
+            
+            const definitionId = definition.id && definition.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+              ? definition.id
+              : generateUUID();
+            
+            const { error: defError } = await supabase
+              .from('definitions')
+              .insert({
+                id: definitionId,
+                entry_id: entryId,
+                grammatical_class: definition.grammaticalClass,
+                meaning: definition.meaning,
+                example: definition.example,
+                position: j
+              });
+
+            if (defError) {
+              console.error('Error inserting definition:', defError);
+              throw defError;
+            }
           }
         }
       }
 
-      console.log('Dictionary data saved successfully');
+      // Delete entries that no longer exist
+      const currentWords = sortedData.entries.map(entry => entry.word.toLowerCase());
+      const entriesToDelete = (existingEntries || [])
+        .filter(entry => !currentWords.includes(entry.word.toLowerCase()))
+        .map(entry => entry.id);
+
+      if (entriesToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('dictionary_entries')
+          .delete()
+          .in('id', entriesToDelete);
+
+        if (deleteError) {
+          console.error('Error deleting outdated entries:', deleteError);
+          throw deleteError;
+        }
+      }
+
+      console.log('Dictionary data saved successfully with translations preserved!');
       toast({
         title: "Changes saved",
-        description: "Dictionary updated successfully",
+        description: "Dictionary updated successfully with translations preserved",
       });
 
       // Reload data to reflect changes
