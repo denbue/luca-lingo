@@ -1,10 +1,7 @@
+
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry, Definition } from '../types/dictionary';
-import { X, Plus, Trash2, Save, ArrowLeft } from 'lucide-react';
-import EditModeSelector from './EditModeSelector';
-import TranslationListView from './TranslationListView';
-import EntryTranslationForm from './EntryTranslationForm';
-import MetadataTranslationForm from './MetadataTranslationForm';
+import { X, Plus, Trash2, Save } from 'lucide-react';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -12,15 +9,7 @@ interface EditFormProps {
   onCancel: () => void;
 }
 
-type EditMode = 'selector' | 'dictionary' | 'translations';
-type TranslationMode = 'list' | 'entry' | 'metadata';
-
 const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
-  const [editMode, setEditMode] = useState<EditMode>('selector');
-  const [translationMode, setTranslationMode] = useState<TranslationMode>('list');
-  const [selectedEntryId, setSelectedEntryId] = useState<string>('');
-  const [selectedLanguage, setSelectedLanguage] = useState<'de' | 'pt'>('de');
-  
   const [formData, setFormData] = useState<DictionaryData>({
     title: data.title,
     description: data.description,
@@ -128,86 +117,12 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     onSave(formData);
   };
 
-  const handleEditEntry = (entryId: string) => {
-    setSelectedEntryId(entryId);
-    setTranslationMode('entry');
-  };
-
-  const handleEditMetadata = (language: 'de' | 'pt') => {
-    setSelectedLanguage(language);
-    setTranslationMode('metadata');
-  };
-
-  const handleBackToTranslationList = () => {
-    setTranslationMode('list');
-    setSelectedEntryId('');
-  };
-
-  const handleBackToEditSelector = () => {
-    setEditMode('selector');
-    setTranslationMode('list');
-  };
-
-  if (editMode === 'selector') {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-auto mx-4">
-          <EditModeSelector
-            data={data}
-            onSelectEditDictionary={() => setEditMode('dictionary')}
-            onSelectManageTranslations={() => setEditMode('translations')}
-            onCancel={onCancel}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (editMode === 'translations') {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto mx-4">
-          {translationMode === 'list' && (
-            <TranslationListView
-              data={data}
-              onEditEntry={handleEditEntry}
-              onEditMetadata={handleEditMetadata}
-              onBackToEditSelector={handleBackToEditSelector}
-            />
-          )}
-          
-          {translationMode === 'entry' && (
-            <EntryTranslationForm
-              entryId={selectedEntryId}
-              onBack={handleBackToTranslationList}
-            />
-          )}
-          
-          {translationMode === 'metadata' && (
-            <MetadataTranslationForm
-              language={selectedLanguage}
-              onBack={handleBackToTranslationList}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto mx-4">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={handleBackToEditSelector}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <h3 className="font-funnel-display text-lg font-bold">Back</h3>
-            </div>
+            <h2 className="font-funnel-display text-2xl font-bold">Edit Dictionary</h2>
             <button
               onClick={onCancel}
               className="text-gray-500 hover:text-gray-700"
@@ -215,8 +130,6 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
               <X size={24} />
             </button>
           </div>
-
-          <h2 className="font-funnel-display text-2xl font-bold">Edit Dictionary</h2>
 
           {/* Dictionary metadata */}
           <div className="space-y-4">
