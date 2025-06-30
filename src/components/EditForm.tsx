@@ -214,6 +214,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
         <div className="mb-8">
           {viewMode === 'mode-selector' && (
             <EditModeSelector
+              data={formData}
               onSelectEditDictionary={() => setViewMode('edit-dictionary')}
               onSelectManageTranslations={() => setViewMode('manage-translations')}
               onCancel={onCancel}
