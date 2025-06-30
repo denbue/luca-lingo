@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DictionaryData, DictionaryEntry } from '../types/dictionary';
 import EntryListView from './EntryListView';
@@ -340,7 +339,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
             <MetadataTranslationEditView
               data={formData}
               language={translationLanguage}
-              onSave={handleSaveMetadataTranslation}
+              onSave={() => setViewMode('manage-translations')}
               onCancel={handleCancel}
             />
           )}
