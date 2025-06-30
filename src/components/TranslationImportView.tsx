@@ -145,7 +145,7 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
 
       console.log(`Importing ${language} translations:`, translations);
 
-      // Import dictionary translations
+      // Import dictionary translations - only save if there's actual content
       if (translations.dictionary.title || translations.dictionary.description) {
         const { error: dictError } = await supabase
           .from('dictionary_translations')
@@ -178,7 +178,7 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
           continue;
         }
 
-        // Save entry translation (origin)
+        // Save entry translation (origin) - only if there's actual content
         if (origin) {
           const { error: entryError } = await supabase
             .from('entry_translations')
@@ -210,20 +210,27 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
             continue;
           }
 
-          const { error: defError } = await supabase
-            .from('definition_translations')
-            .upsert({
-              definition_id: matchingDefinition.id,
-              language: language,
-              grammatical_class: defTranslation.grammaticalClassTranslation || null,
-              meaning: defTranslation.meaningTranslation || null,
-              example: defTranslation.exampleTranslation || null
-            }, {
-              onConflict: 'definition_id,language'
-            });
+          // Only save translations that have actual content
+          const hasTranslations = defTranslation.grammaticalClassTranslation || 
+                                 defTranslation.meaningTranslation || 
+                                 defTranslation.exampleTranslation;
 
-          if (defError) {
-            console.error(`Error saving ${language} definition translation:`, defError);
+          if (hasTranslations) {
+            const { error: defError } = await supabase
+              .from('definition_translations')
+              .upsert({
+                definition_id: matchingDefinition.id,
+                language: language,
+                grammatical_class: defTranslation.grammaticalClassTranslation || null,
+                meaning: defTranslation.meaningTranslation || null,
+                example: defTranslation.exampleTranslation || null
+              }, {
+                onConflict: 'definition_id,language'
+              });
+
+            if (defError) {
+              console.error(`Error saving ${language} definition translation:`, defError);
+            }
           }
         }
       }
@@ -269,12 +276,12 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="font-funnel-display font-bold mb-2">File Format</h4>
           <p className="font-funnel-sans text-sm text-gray-700 mb-3">
-            Upload a text file with translations. Use the "Export Dictionary" function to create a translation template 
-            with all the original content and placeholder lines for translations. Just fill in the translation lines and upload the file back.
+            Upload the text file created by "Export Translation Template". The file contains all dictionary content 
+            with translation placeholder lines. Simply fill in your translations and upload the file back.
           </p>
           <p className="font-funnel-sans text-sm text-gray-600">
-            The template contains lines like "DICTIONARY_TITLE_TRANSLATION: [ADD YOUR TRANSLATION HERE]" - 
-            simply replace the placeholder text with your translations.
+            For fields that are empty in English (like missing examples), leave the translation line empty too - 
+            don't add any translation text for empty original fields.
           </p>
         </div>
 
@@ -282,7 +289,7 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h4 className="font-funnel-display font-bold mb-2">Upload Translation File</h4>
           <p className="font-funnel-sans text-sm text-gray-600 mb-4">
-            Select a text file with {language === 'de' ? 'German' : 'Portuguese'} translations
+            Select the text file with {language === 'de' ? 'German' : 'Portuguese'} translations
           </p>
           <input
             type="file"
@@ -305,8 +312,9 @@ const TranslationImportView = ({ data, language, onBack }: TranslationImportView
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h4 className="font-funnel-display font-bold mb-2">Important Notes</h4>
           <ul className="font-funnel-sans text-sm text-gray-700 space-y-1">
-            <li>• Use the "Export Dictionary" function to get the translation template</li>
-            <li>• Replace "[ADD YOUR TRANSLATION HERE]" with your actual translations</li>
+            <li>• Use "Export Translation Template" to get the translation file</li>
+            <li>• Only fill in translations where there's original English content</li>
+            <li>• Leave translation lines empty when the original field is empty</li>
             <li>• Translations are matched by word and definition content</li>
             <li>• Existing translations for the same language will be overwritten</li>
             <li>• Words not found in the dictionary will be skipped</li>
