@@ -10,6 +10,7 @@ import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { exportDictionary } from '../utils/dictionaryExport';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -153,9 +154,42 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     }
   };
 
-  const handleSaveMetadataTranslation = () => {
-    // The save is handled by the MetadataTranslationEditView component
-    setViewMode('manage-translations');
+  const handleSaveMetadataTranslation = async (language: 'de' | 'pt', title: string, description: string) => {
+    try {
+      console.log(`Saving ${language} dictionary translation:`, { title, description });
+
+      const { error } = await supabase
+        .from('dictionary_translations')
+        .upsert({
+          dictionary_id: DICTIONARY_ID,
+          language: language,
+          title: title.trim() || null,
+          description: description.trim() || null
+        }, {
+          onConflict: 'dictionary_id,language'
+        });
+
+      if (error) {
+        console.error(`Error saving ${language} dictionary translation:`, error);
+        throw error;
+      }
+
+      console.log(`Successfully saved ${language} dictionary translation`);
+      
+      toast({
+        title: "Translation saved",
+        description: `${language === 'de' ? 'German' : 'Portuguese'} dictionary translation saved successfully`,
+      });
+
+      setViewMode('manage-translations');
+    } catch (error: any) {
+      console.error('Error saving dictionary translation:', error);
+      toast({
+        title: "Error saving translation",
+        description: error.message || "Failed to save dictionary translation",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFinalSave = () => {
@@ -208,6 +242,10 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
     }
   };
 
+  const handleExport = () => {
+    exportDictionary(data);
+  };
+
   return (
     <div className="fixed inset-0 bg-global-bg z-50 overflow-y-auto">
       <div className="p-5">
@@ -217,6 +255,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
               data={formData}
               onSelectEditDictionary={() => setViewMode('edit-dictionary')}
               onSelectManageTranslations={() => setViewMode('manage-translations')}
+              onExport={handleExport}
               onCancel={onCancel}
             />
           )}
@@ -254,7 +293,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                 data={formData}
                 onEditEntry={handleTranslateEntry}
                 onEditMetadata={handleTranslateMetadata}
-                onBackToEditSelector={() => setViewMode('mode-selector')}
+                onBack={() => setViewMode('mode-selector')}
               />
               <div className="flex justify-center mt-8 space-x-4">
                 <button
