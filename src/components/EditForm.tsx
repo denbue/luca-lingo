@@ -293,18 +293,12 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                 onEditMetadata={handleTranslateMetadata}
                 onBackToEditSelector={() => setViewMode('mode-selector')}
               />
-              <div className="flex justify-center mt-8 space-x-4">
-                <button
-                  onClick={handleFinalSave}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-green-600 transition-colors"
-                >
-                  Save All Changes
-                </button>
+              <div className="flex justify-center mt-8">
                 <button
                   onClick={() => setViewMode('mode-selector')}
                   className="px-6 py-3 bg-gray-500 text-white rounded-lg font-funnel-sans font-bold hover:bg-gray-600 transition-colors"
                 >
-                  Cancel
+                  Close
                 </button>
               </div>
             </>
