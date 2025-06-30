@@ -10,7 +10,7 @@ import TranslationListView from './TranslationListView';
 import TranslationEditView from './TranslationEditView';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { exportDictionary } from '../utils/dictionaryExport';
+import { exportDictionaryAsText } from '../utils/dictionaryExport';
 
 interface EditFormProps {
   data: DictionaryData;
@@ -243,7 +243,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
   };
 
   const handleExport = () => {
-    exportDictionary(data);
+    exportDictionaryAsText(data);
   };
 
   return (
@@ -255,7 +255,6 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
               data={formData}
               onSelectEditDictionary={() => setViewMode('edit-dictionary')}
               onSelectManageTranslations={() => setViewMode('manage-translations')}
-              onExport={handleExport}
               onCancel={onCancel}
             />
           )}
@@ -293,7 +292,7 @@ const EditForm = ({ data, onSave, onCancel }: EditFormProps) => {
                 data={formData}
                 onEditEntry={handleTranslateEntry}
                 onEditMetadata={handleTranslateMetadata}
-                onBack={() => setViewMode('mode-selector')}
+                onBackToEditSelector={() => setViewMode('mode-selector')}
               />
               <div className="flex justify-center mt-8 space-x-4">
                 <button
