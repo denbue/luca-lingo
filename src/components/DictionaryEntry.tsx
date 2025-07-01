@@ -127,7 +127,7 @@ const DictionaryEntry = ({ entry, originLabel }: DictionaryEntryProps) => {
 
           {entry.origin && (
             <p className="font-funnel-sans text-base font-light opacity-60 mb-5">
-              {originLabel}{entry.origin}
+              {originLabel} {entry.origin}
             </p>
           )}
 
