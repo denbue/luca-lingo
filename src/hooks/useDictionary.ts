@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DictionaryData, DictionaryEntry, Definition } from '@/types/dictionary';
@@ -43,42 +42,61 @@ export const useDictionary = () => {
 
       console.log('Dictionary metadata loaded:', dictionary);
 
-      // Get dictionary entries with definitions
-      const { data: entries, error: entriesError } = await supabase
+      // Try a simpler query first to diagnose the relationship issue
+      console.log('Attempting to load entries without definitions first...');
+      const { data: entriesOnly, error: entriesOnlyError } = await supabase
         .from('dictionary_entries')
-        .select(`
-          *,
-          definitions (*)
-        `)
+        .select('*')
         .eq('dictionary_id', DICTIONARY_ID)
-        .order('word'); // Order alphabetically by word
+        .order('word');
 
-      if (entriesError) {
-        console.error('Error loading dictionary entries:', entriesError);
-        throw entriesError;
+      if (entriesOnlyError) {
+        console.error('Error loading entries only:', entriesOnlyError);
+        throw entriesOnlyError;
       }
 
-      console.log('Dictionary entries loaded:', entries);
+      console.log('Entries loaded successfully:', entriesOnly?.length, 'entries');
 
-      // Transform the data to match our format - PRESERVE DATABASE IDs
-      const transformedEntries: DictionaryEntry[] = entries
-        .map(entry => ({
-          id: entry.id as string, // PRESERVE the database ID
-          word: entry.word,
-          ipa: entry.ipa || '',
-          origin: entry.origin || '',
-          audioUrl: entry.audio_url || undefined,
-          colorCombo: entry.color_combo as 1 | 2 | 3 | 4,
-          slug: entry.slug || undefined, // Include slug for stable identification
-          definitions: entry.definitions
-            .sort((a: any, b: any) => a.position - b.position)
+      // Now try to load definitions separately
+      console.log('Loading definitions separately...');
+      const entryIds = entriesOnly?.map(entry => entry.id) || [];
+      
+      const { data: definitions, error: defsError } = await supabase
+        .from('definitions')
+        .select('*')
+        .in('entry_id', entryIds)
+        .order('position');
+
+      if (defsError) {
+        console.error('Error loading definitions:', defsError);
+        throw defsError;
+      }
+
+      console.log('Definitions loaded successfully:', definitions?.length, 'definitions');
+
+      // Transform the data manually
+      const transformedEntries: DictionaryEntry[] = (entriesOnly || [])
+        .map(entry => {
+          const entryDefinitions = (definitions || [])
+            .filter(def => def.entry_id === entry.id)
             .map((def: any) => ({
-              id: def.id as string, // PRESERVE the database ID
+              id: def.id as string,
               grammaticalClass: def.grammatical_class,
               meaning: def.meaning,
               example: def.example || undefined
-            }))
-        }))
+            }));
+
+          return {
+            id: entry.id as string,
+            word: entry.word,
+            ipa: entry.ipa || '',
+            origin: entry.origin || '',
+            audioUrl: entry.audio_url || undefined,
+            colorCombo: entry.color_combo as 1 | 2 | 3 | 4,
+            slug: entry.slug || undefined,
+            definitions: entryDefinitions
+          };
+        })
         .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
 
       // Assign color combos in sequence after alphabetical sorting
@@ -90,7 +108,7 @@ export const useDictionary = () => {
         entries: entriesWithColors
       };
 
-      console.log('Final dictionary data with preserved IDs:', dictionaryData);
+      console.log('Final dictionary data with manually joined data:', dictionaryData);
       setData(dictionaryData);
       
       // Migrate from localStorage if this is the first load and no entries exist
