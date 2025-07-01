@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DictionaryEntry from '../components/DictionaryEntry';
 import PinEntry from '../components/PinEntry';
@@ -13,7 +12,7 @@ import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 const DictionaryContent = () => {
   const { data, loading, saveData, refetch } = useDictionary();
   const { currentLanguage } = useLanguage();
-  const { translatedData, loading: translationLoading, forceRefresh } = useTranslatedContent(data, currentLanguage);
+  const { translatedData, loading: translationLoading, forceRefresh, originLabel } = useTranslatedContent(data, currentLanguage);
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
 

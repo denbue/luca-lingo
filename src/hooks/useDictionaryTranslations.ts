@@ -9,16 +9,19 @@ const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 interface DictionaryTranslation {
   title: string;
   description: string;
+  originLabel: string;
 }
 
 export const useDictionaryTranslations = (data: DictionaryData | null) => {
   const [germanTranslation, setGermanTranslation] = useState<DictionaryTranslation>({
     title: '',
-    description: ''
+    description: '',
+    originLabel: ''
   });
   const [portugueseTranslation, setPortugueseTranslation] = useState<DictionaryTranslation>({
     title: '',
-    description: ''
+    description: '',
+    originLabel: ''
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -51,7 +54,8 @@ export const useDictionaryTranslations = (data: DictionaryData | null) => {
       if (germanData) {
         setGermanTranslation({
           title: germanData.title || '',
-          description: germanData.description || ''
+          description: germanData.description || '',
+          originLabel: germanData.origin_label || ''
         });
       }
 
@@ -60,7 +64,8 @@ export const useDictionaryTranslations = (data: DictionaryData | null) => {
       if (portugueseData) {
         setPortugueseTranslation({
           title: portugueseData.title || '',
-          description: portugueseData.description || ''
+          description: portugueseData.description || '',
+          originLabel: portugueseData.origin_label || ''
         });
       }
 
@@ -78,9 +83,9 @@ export const useDictionaryTranslations = (data: DictionaryData | null) => {
     }
   };
 
-  const saveDictionaryTranslation = async (language: 'de' | 'pt', title: string, description: string) => {
+  const saveDictionaryTranslation = async (language: 'de' | 'pt', title: string, description: string, originLabel: string) => {
     try {
-      console.log(`Saving ${language} dictionary translation:`, { title, description });
+      console.log(`Saving ${language} dictionary translation:`, { title, description, originLabel });
 
       const { error } = await supabase
         .from('dictionary_translations')
@@ -88,7 +93,8 @@ export const useDictionaryTranslations = (data: DictionaryData | null) => {
           dictionary_id: DICTIONARY_ID,
           language: language,
           title: title.trim() || null,
-          description: description.trim() || null
+          description: description.trim() || null,
+          origin_label: originLabel.trim() || null
         }, {
           onConflict: 'dictionary_id,language'
         });

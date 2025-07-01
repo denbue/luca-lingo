@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { DictionaryEntry as DictionaryEntryType } from '../types/dictionary';
 import { Plus, Minus, Volume2 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslatedContent } from '../hooks/useTranslatedContent';
 
 interface DictionaryEntryProps {
   entry: DictionaryEntryType;
@@ -36,7 +38,11 @@ const colorCombos = {
 
 const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { currentLanguage } = useLanguage();
   const colors = colorCombos[entry.colorCombo];
+
+  // Get the origin label from the translation hook
+  const { originLabel } = useTranslatedContent(null, currentLanguage);
 
   const playAudio = () => {
     if (entry.audioUrl) {
@@ -124,7 +130,7 @@ const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
 
           {entry.origin && (
             <p className="font-funnel-sans text-base font-light opacity-60 mb-5">
-              Origin: {entry.origin}
+              {originLabel}{entry.origin}
             </p>
           )}
 

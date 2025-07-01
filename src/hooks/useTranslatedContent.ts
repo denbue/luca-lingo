@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DictionaryData, DictionaryEntry } from '@/types/dictionary';
@@ -11,6 +10,7 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
   const [translatedData, setTranslatedData] = useState<DictionaryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [originLabel, setOriginLabel] = useState('Origin: ');
   const { toast } = useToast();
 
   const forceRefresh = useCallback(() => {
@@ -22,6 +22,7 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
     if (!data || language === 'en') {
       console.log(`Setting data directly for language: ${language}`);
       setTranslatedData(data);
+      setOriginLabel('Origin: ');
       return;
     }
 
@@ -36,7 +37,7 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
     try {
       console.log(`Loading translations for language: ${language}`);
 
-      // Get dictionary translations (title and description)
+      // Get dictionary translations (title, description, and origin label)
       const { data: dictTranslations, error: dictError } = await supabase
         .from('dictionary_translations')
         .select('*')
@@ -49,6 +50,11 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
       } else {
         console.log(`Dictionary translations for ${language}:`, dictTranslations);
       }
+
+      // Set the origin label based on translation or fallback
+      const translatedOriginLabel = dictTranslations?.origin_label || 
+        (language === 'de' ? 'Herkunft: ' : language === 'pt' ? 'Origem: ' : 'Origin: ');
+      setOriginLabel(translatedOriginLabel);
 
       // Get entry IDs - using the PRESERVED database IDs
       const entryIds = data.entries.map(entry => entry.id);
@@ -155,10 +161,11 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
         variant: "destructive"
       });
       setTranslatedData(data); // Fallback to original data
+      setOriginLabel('Origin: ');
     } finally {
       setLoading(false);
     }
   };
 
-  return { translatedData, loading, forceRefresh };
+  return { translatedData, loading, forceRefresh, originLabel };
 };

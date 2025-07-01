@@ -74,6 +74,12 @@ const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSe
                 {germanTranslation.description || `${data.description} (German translation needed)`}
               </span>
             </div>
+            <div>
+              <span className="font-funnel-sans font-bold text-sm">Origin Label: </span>
+              <span className="font-funnel-sans text-sm">
+                {germanTranslation.originLabel || 'Herkunft: (German translation needed)'}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -99,6 +105,12 @@ const TranslationListView = ({ data, onEditEntry, onEditMetadata, onBackToEditSe
               <span className="font-funnel-sans font-bold text-sm">Description: </span>
               <span className="font-funnel-sans text-sm">
                 {portugueseTranslation.description || `${data.description} (Portuguese translation needed)`}
+              </span>
+            </div>
+            <div>
+              <span className="font-funnel-sans font-bold text-sm">Origin Label: </span>
+              <span className="font-funnel-sans text-sm">
+                {portugueseTranslation.originLabel || 'Origem: (Portuguese translation needed)'}
               </span>
             </div>
           </div>
