@@ -14,6 +14,7 @@ export interface DictionaryEntry {
   origin: string;
   audioUrl?: string;
   colorCombo: 1 | 2 | 3 | 4;
+  slug?: string; // Add slug field for stable identification
 }
 
 export interface DictionaryData {

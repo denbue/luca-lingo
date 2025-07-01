@@ -48,6 +48,13 @@ export type Database = {
             referencedRelation: "definitions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_definition_translations_definition_id"
+            columns: ["definition_id"]
+            isOneToOne: false
+            referencedRelation: "definitions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       definitions: {
@@ -81,6 +88,13 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "definitions_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_definitions_entry_id"
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "dictionary_entries"
@@ -122,6 +136,7 @@ export type Database = {
           ipa: string | null
           origin: string | null
           position: number | null
+          slug: string | null
           updated_at: string | null
           word: string
         }
@@ -134,6 +149,7 @@ export type Database = {
           ipa?: string | null
           origin?: string | null
           position?: number | null
+          slug?: string | null
           updated_at?: string | null
           word: string
         }
@@ -146,12 +162,20 @@ export type Database = {
           ipa?: string | null
           origin?: string | null
           position?: number | null
+          slug?: string | null
           updated_at?: string | null
           word?: string
         }
         Relationships: [
           {
             foreignKeyName: "dictionary_entries_dictionary_id_fkey"
+            columns: ["dictionary_id"]
+            isOneToOne: false
+            referencedRelation: "dictionaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_dictionary_entries_dictionary_id"
             columns: ["dictionary_id"]
             isOneToOne: false
             referencedRelation: "dictionaries"
@@ -230,6 +254,13 @@ export type Database = {
             referencedRelation: "dictionary_entries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_entry_translations_entry_id"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_entries"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -237,7 +268,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_slug: {
+        Args: { input_text: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

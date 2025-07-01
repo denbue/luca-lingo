@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const DICTIONARY_ID = '00000000-0000-0000-0000-000000000001';
 
-// Helper function to generate proper UUIDs
+// Helper function to generate proper UUIDs ONLY for truly new entries
 const generateUUID = (): string => {
   return crypto.randomUUID();
 };
@@ -60,25 +60,26 @@ export const useDictionary = () => {
 
       console.log('Dictionary entries loaded:', entries);
 
-      // Transform the data to match our existing format and sort alphabetically
+      // Transform the data to match our format - PRESERVE DATABASE IDs
       const transformedEntries: DictionaryEntry[] = entries
         .map(entry => ({
-          id: entry.id as string,
+          id: entry.id as string, // PRESERVE the database ID
           word: entry.word,
           ipa: entry.ipa || '',
           origin: entry.origin || '',
           audioUrl: entry.audio_url || undefined,
           colorCombo: entry.color_combo as 1 | 2 | 3 | 4,
+          slug: entry.slug || undefined, // Include slug for stable identification
           definitions: entry.definitions
             .sort((a: any, b: any) => a.position - b.position)
             .map((def: any) => ({
-              id: def.id as string,
+              id: def.id as string, // PRESERVE the database ID
               grammaticalClass: def.grammatical_class,
               meaning: def.meaning,
               example: def.example || undefined
             }))
         }))
-        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())); // Sort alphabetically
+        .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()));
 
       // Assign color combos in sequence after alphabetical sorting
       const entriesWithColors = assignColorCombos(transformedEntries);
@@ -89,7 +90,7 @@ export const useDictionary = () => {
         entries: entriesWithColors
       };
 
-      console.log('Final dictionary data:', dictionaryData);
+      console.log('Final dictionary data with preserved IDs:', dictionaryData);
       setData(dictionaryData);
       
       // Migrate from localStorage if this is the first load and no entries exist
@@ -125,13 +126,13 @@ export const useDictionary = () => {
           entries: localData.entries
             .map(entry => ({
               ...entry,
-              id: generateUUID(), // Generate new UUID
+              id: generateUUID(), // Generate new UUID for migration
               definitions: entry.definitions.map(def => ({
                 ...def,
-                id: generateUUID() // Generate new UUID
+                id: generateUUID() // Generate new UUID for migration
               }))
             }))
-            .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase())) // Sort alphabetically
+            .sort((a, b) => a.word.toLowerCase().localeCompare(b.word.toLowerCase()))
         };
         
         // Assign color combos in sequence after sorting
@@ -154,10 +155,10 @@ export const useDictionary = () => {
     }
   };
 
-  // Save dictionary data to Supabase - FIXED VERSION THAT PRESERVES TRANSLATIONS
+  // FIXED: Save dictionary data with proper ID preservation
   const saveData = async (newData: DictionaryData) => {
     try {
-      console.log('Saving dictionary data to Supabase:', newData);
+      console.log('Saving dictionary data with ID preservation:', newData);
 
       // Sort entries alphabetically and assign color combos before saving
       const sortedData: DictionaryData = {
@@ -180,11 +181,11 @@ export const useDictionary = () => {
         throw dictError;
       }
 
-      // Get existing entries to preserve IDs and maintain translation relationships
+      // Get existing entries to understand what's in the database
       const { data: existingEntries, error: existingError } = await supabase
         .from('dictionary_entries')
         .select(`
-          id, word,
+          id, word, slug,
           definitions (id, grammatical_class, meaning, example)
         `)
         .eq('dictionary_id', DICTIONARY_ID);
@@ -194,19 +195,31 @@ export const useDictionary = () => {
         throw existingError;
       }
 
-      const existingEntriesMap = new Map(existingEntries?.map(entry => [entry.word.toLowerCase(), entry]) || []);
+      // Create maps for efficient lookup - use ID as primary key
+      const existingEntriesById = new Map(existingEntries?.map(entry => [entry.id, entry]) || []);
+      const existingEntriesBySlug = new Map(existingEntries?.map(entry => [entry.slug, entry]) || []);
 
-      // Process each entry - update existing or create new
+      // Process each entry in the sorted data
       for (let i = 0; i < sortedData.entries.length; i++) {
         const entry = sortedData.entries[i];
-        const existingEntry = existingEntriesMap.get(entry.word.toLowerCase());
-        
+        let existingEntry = null;
         let entryId = entry.id;
         
+        // First try to find by ID (most reliable)
+        if (entry.id && existingEntriesById.has(entry.id)) {
+          existingEntry = existingEntriesById.get(entry.id);
+          console.log(`Found existing entry by ID: ${entry.word} (${entry.id})`);
+        }
+        // If not found by ID, try by slug as fallback
+        else if (entry.slug && existingEntriesBySlug.has(entry.slug)) {
+          existingEntry = existingEntriesBySlug.get(entry.slug);
+          entryId = existingEntry.id; // Use the database ID
+          console.log(`Found existing entry by slug: ${entry.word} (${entry.slug}) -> ID: ${entryId}`);
+        }
+
         if (existingEntry) {
-          // Update existing entry (preserve ID to maintain translations)
-          entryId = existingEntry.id;
-          console.log(`Updating existing entry: ${entry.word} with ID: ${entryId}`);
+          // Update existing entry - PRESERVE the database ID
+          console.log(`Updating existing entry: ${entry.word} with preserved ID: ${entryId}`);
           
           const { error: entryError } = await supabase
             .from('dictionary_entries')
@@ -216,7 +229,8 @@ export const useDictionary = () => {
               origin: entry.origin,
               audio_url: entry.audioUrl,
               color_combo: entry.colorCombo,
-              position: i
+              position: i,
+              slug: entry.slug // Update slug if provided
             })
             .eq('id', entryId);
 
@@ -225,8 +239,12 @@ export const useDictionary = () => {
             throw entryError;
           }
         } else {
-          // Create new entry
-          console.log(`Creating new entry: ${entry.word}`);
+          // Create new entry - generate new ID only for truly new entries
+          if (!entry.id || !entry.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            entryId = generateUUID();
+          }
+          
+          console.log(`Creating new entry: ${entry.word} with ID: ${entryId}`);
           
           const { error: entryError } = await supabase
             .from('dictionary_entries')
@@ -238,7 +256,8 @@ export const useDictionary = () => {
               origin: entry.origin,
               audio_url: entry.audioUrl,
               color_combo: entry.colorCombo,
-              position: i
+              position: i,
+              slug: entry.slug // Slug will be auto-generated by trigger if not provided
             });
 
           if (entryError) {
@@ -247,22 +266,22 @@ export const useDictionary = () => {
           }
         }
 
-        // Handle definitions - preserve existing definition IDs where possible
+        // Handle definitions with proper ID preservation
         const existingDefinitions = existingEntry?.definitions || [];
-        const existingDefsMap = new Map(existingDefinitions.map(def => [
-          `${def.grammatical_class.toLowerCase()}_${def.meaning.toLowerCase()}`, def
-        ]));
+        const existingDefsById = new Map(existingDefinitions.map(def => [def.id, def]));
 
         // Delete definitions that no longer exist
         if (existingDefinitions.length > 0) {
-          const currentDefKeys = entry.definitions.map(def => 
-            `${def.grammaticalClass.toLowerCase()}_${def.meaning.toLowerCase()}`
-          );
+          const currentDefIds = entry.definitions
+            .filter(def => def.id && def.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))
+            .map(def => def.id);
+          
           const defsToDelete = existingDefinitions
-            .filter(def => !currentDefKeys.includes(`${def.grammatical_class.toLowerCase()}_${def.meaning.toLowerCase()}`))
+            .filter(def => !currentDefIds.includes(def.id))
             .map(def => def.id);
           
           if (defsToDelete.length > 0) {
+            console.log(`Deleting ${defsToDelete.length} outdated definitions`);
             const { error: deleteDefError } = await supabase
               .from('definitions')
               .delete()
@@ -275,15 +294,13 @@ export const useDictionary = () => {
           }
         }
 
-        // Update or insert definitions
+        // Update or insert definitions with ID preservation
         for (let j = 0; j < entry.definitions.length; j++) {
           const definition = entry.definitions[j];
-          const defKey = `${definition.grammaticalClass.toLowerCase()}_${definition.meaning.toLowerCase()}`;
-          const existingDef = existingDefsMap.get(defKey);
-
-          if (existingDef) {
-            // Update existing definition (preserve ID to maintain translations)
-            console.log(`Updating existing definition: ${definition.meaning}`);
+          
+          if (definition.id && existingDefsById.has(definition.id)) {
+            // Update existing definition - PRESERVE the database ID
+            console.log(`Updating existing definition: ${definition.meaning} (ID: ${definition.id})`);
             
             const { error: defError } = await supabase
               .from('definitions')
@@ -293,7 +310,7 @@ export const useDictionary = () => {
                 example: definition.example,
                 position: j
               })
-              .eq('id', existingDef.id);
+              .eq('id', definition.id);
 
             if (defError) {
               console.error('Error updating definition:', defError);
@@ -301,11 +318,11 @@ export const useDictionary = () => {
             }
           } else {
             // Create new definition
-            console.log(`Creating new definition: ${definition.meaning}`);
-            
             const definitionId = definition.id && definition.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
               ? definition.id
               : generateUUID();
+            
+            console.log(`Creating new definition: ${definition.meaning} (ID: ${definitionId})`);
             
             const { error: defError } = await supabase
               .from('definitions')
@@ -327,12 +344,16 @@ export const useDictionary = () => {
       }
 
       // Delete entries that no longer exist
-      const currentWords = sortedData.entries.map(entry => entry.word.toLowerCase());
+      const currentEntryIds = sortedData.entries
+        .filter(entry => entry.id && entry.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))
+        .map(entry => entry.id);
+      
       const entriesToDelete = (existingEntries || [])
-        .filter(entry => !currentWords.includes(entry.word.toLowerCase()))
+        .filter(entry => !currentEntryIds.includes(entry.id))
         .map(entry => entry.id);
 
       if (entriesToDelete.length > 0) {
+        console.log(`Deleting ${entriesToDelete.length} outdated entries`);
         const { error: deleteError } = await supabase
           .from('dictionary_entries')
           .delete()
@@ -344,10 +365,10 @@ export const useDictionary = () => {
         }
       }
 
-      console.log('Dictionary data saved successfully with translations preserved!');
+      console.log('Dictionary data saved successfully with all IDs preserved!');
       toast({
         title: "Changes saved",
-        description: "Dictionary updated successfully with translations preserved",
+        description: "Dictionary updated successfully with all translations preserved",
       });
 
       // Reload data to reflect changes

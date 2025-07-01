@@ -21,7 +21,7 @@ interface EditFormProps {
 
 type ViewMode = 'mode-selector' | 'edit-dictionary' | 'manage-translations' | 'edit-entry' | 'edit-metadata' | 'translate-entry' | 'translate-metadata' | 'import-german' | 'import-portuguese';
 
-// Helper function to generate proper UUIDs
+// Helper function to generate proper UUIDs ONLY for truly new entries
 const generateUUID = () => {
   return crypto.randomUUID();
 };
@@ -37,6 +37,7 @@ const EditForm = ({ data, onSave, onCancel, onRefreshData }: EditFormProps) => {
   const { toast } = useToast();
 
   const handleEditEntry = (entry: DictionaryEntry) => {
+    // PRESERVE the existing entry ID - never generate new ones for existing entries
     setCurrentEntry(entry);
     setIsNewEntry(false);
     setViewMode('edit-entry');
@@ -198,6 +199,7 @@ const EditForm = ({ data, onSave, onCancel, onRefreshData }: EditFormProps) => {
   };
 
   const handleAddEntry = async () => {
+    // ONLY generate new UUID for truly new entries
     const newEntry: DictionaryEntry = {
       id: generateUUID(),
       word: '',
@@ -217,6 +219,7 @@ const EditForm = ({ data, onSave, onCancel, onRefreshData }: EditFormProps) => {
     if (isNewEntry) {
       updatedEntries = [...formData.entries, entry];
     } else {
+      // PRESERVE existing entry ID when updating
       updatedEntries = formData.entries.map(e => e.id === entry.id ? entry : e);
     }
     
