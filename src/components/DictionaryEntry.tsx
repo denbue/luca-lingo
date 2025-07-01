@@ -7,6 +7,7 @@ import { useTranslatedContent } from '../hooks/useTranslatedContent';
 
 interface DictionaryEntryProps {
   entry: DictionaryEntryType;
+  originLabel: string;
 }
 
 const colorCombos = {
@@ -36,13 +37,9 @@ const colorCombos = {
   }
 };
 
-const DictionaryEntry = ({ entry }: DictionaryEntryProps) => {
+const DictionaryEntry = ({ entry, originLabel }: DictionaryEntryProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { currentLanguage } = useLanguage();
   const colors = colorCombos[entry.colorCombo];
-
-  // Get the origin label from the translation hook
-  const { originLabel } = useTranslatedContent(null, currentLanguage);
 
   const playAudio = () => {
     if (entry.audioUrl) {

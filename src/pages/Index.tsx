@@ -106,7 +106,7 @@ const DictionaryContent = () => {
         {/* Dictionary entries */}
         <div className="space-y-0">
           {displayData.entries.map((entry) => (
-            <DictionaryEntry key={entry.id} entry={entry} />
+            <DictionaryEntry key={entry.id} entry={entry} originLabel={originLabel} />
           ))}
         </div>
       </div>
