@@ -169,6 +169,7 @@ export type Database = {
           dictionary_id: string | null
           id: string
           language: string
+          origin_label: string | null
           title: string | null
           updated_at: string | null
         }
@@ -178,6 +179,7 @@ export type Database = {
           dictionary_id?: string | null
           id?: string
           language: string
+          origin_label?: string | null
           title?: string | null
           updated_at?: string | null
         }
@@ -187,6 +189,7 @@ export type Database = {
           dictionary_id?: string | null
           id?: string
           language?: string
+          origin_label?: string | null
           title?: string | null
           updated_at?: string | null
         }

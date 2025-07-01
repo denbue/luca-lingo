@@ -26,21 +26,24 @@ const MetadataTranslationEditView = ({ data, language, onSave, onCancel }: Metad
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [originLabel, setOriginLabel] = useState('');
 
   // Update local state when translations load
   useEffect(() => {
     setTitle(currentTranslation.title);
     setDescription(currentTranslation.description);
+    setOriginLabel(currentTranslation.originLabel);
   }, [currentTranslation]);
 
   const handleSave = async () => {
     try {
-      await saveDictionaryTranslation(language, title, description);
+      await saveDictionaryTranslation(language, title, description, originLabel);
       
       // Update the state
       setCurrentTranslation({
         title: title,
-        description: description
+        description: description,
+        originLabel: originLabel
       });
       
       onSave();
@@ -84,7 +87,7 @@ const MetadataTranslationEditView = ({ data, language, onSave, onCancel }: Metad
 
       <div className="border border-gray-300 rounded-lg p-4 space-y-4">
         <div className="text-xs text-gray-500 mb-4">
-          Original: {data.title} | {data.description}
+          Original: {data.title} | {data.description} | Origin:
         </div>
         
         <div>
@@ -105,6 +108,17 @@ const MetadataTranslationEditView = ({ data, language, onSave, onCancel }: Metad
             onChange={(e) => setDescription(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg font-funnel-sans h-20"
             placeholder={`${languageName} translation of: ${data.description}`}
+          />
+        </div>
+
+        <div>
+          <label className="block font-funnel-sans font-bold mb-2">{languageName} Origin Label</label>
+          <input
+            type="text"
+            value={originLabel}
+            onChange={(e) => setOriginLabel(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg font-funnel-sans"
+            placeholder={`${languageName} translation of "Origin:" (e.g., ${language === 'de' ? 'Herkunft:' : 'Origem:'})`}
           />
         </div>
       </div>
