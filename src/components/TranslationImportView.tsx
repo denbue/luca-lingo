@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ArrowLeft, Upload } from 'lucide-react';
 import { DictionaryData } from '../types/dictionary';
@@ -141,6 +142,15 @@ const TranslationImportView = ({ data, language, onBack, onRefreshData }: Transl
     if (!file) return;
 
     setIsUploading(true);
+    const importSummary = {
+      dictionaryTranslated: false,
+      entriesProcessed: 0,
+      entriesTranslated: 0,
+      definitionsProcessed: 0,
+      definitionsTranslated: 0,
+      errors: [] as string[]
+    };
+
     try {
       const text = await file.text();
       const translations = parseTranslationFile(text);
@@ -149,68 +159,125 @@ const TranslationImportView = ({ data, language, onBack, onRefreshData }: Transl
 
       // Import dictionary translations - only save if there's actual content
       if (translations.dictionary.title || translations.dictionary.description) {
-        const { error: dictError } = await supabase
-          .from('dictionary_translations')
-          .upsert({
-            dictionary_id: DICTIONARY_ID,
-            language: language,
-            title: translations.dictionary.title || null,
-            description: translations.dictionary.description || null
-          }, {
-            onConflict: 'dictionary_id,language'
-          });
+        try {
+          const { error: dictError } = await supabase
+            .from('dictionary_translations')
+            .upsert({
+              dictionary_id: DICTIONARY_ID,
+              language: language,
+              title: translations.dictionary.title || null,
+              description: translations.dictionary.description || null
+            }, {
+              onConflict: 'dictionary_id,language'
+            });
 
-        if (dictError) {
-          console.error(`Error saving ${language} dictionary translation:`, dictError);
-          throw dictError;
+          if (dictError) {
+            console.error(`Error saving ${language} dictionary translation:`, dictError);
+            importSummary.errors.push(`Dictionary translation error: ${dictError.message}`);
+          } else {
+            importSummary.dictionaryTranslated = true;
+          }
+        } catch (error: any) {
+          importSummary.errors.push(`Dictionary translation error: ${error.message}`);
         }
       }
 
-      // Import entry translations
+      // Import entry translations with improved matching and error handling
       for (const entryTranslation of translations.entries) {
         const { word, origin, definitions } = entryTranslation;
+        importSummary.entriesProcessed++;
         
-        // Find the entry by word
-        const matchingEntry = data.entries.find(entry => 
+        // Find the entry by word using case-insensitive search and multiple matching strategies
+        let matchingEntry = data.entries.find(entry => 
           entry.word.toLowerCase() === word.toLowerCase()
         );
 
+        // If not found, try matching by removing special characters and spaces
         if (!matchingEntry) {
-          console.warn(`Entry not found for word: ${word}`);
+          const normalizeWord = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normalizedSearchWord = normalizeWord(word);
+          matchingEntry = data.entries.find(entry => 
+            normalizeWord(entry.word) === normalizedSearchWord
+          );
+        }
+
+        if (!matchingEntry) {
+          console.warn(`Entry not found for word: "${word}"`);
+          importSummary.errors.push(`Entry not found: "${word}"`);
           continue;
         }
 
+        console.log(`Processing entry: "${word}" -> Found: "${matchingEntry.word}" (ID: ${matchingEntry.id})`);
+
         // Save entry translation (origin) - only if there's actual content
         if (origin) {
-          const { error: entryError } = await supabase
-            .from('entry_translations')
-            .upsert({
-              entry_id: matchingEntry.id,
-              language: language,
-              origin: origin
-            }, {
-              onConflict: 'entry_id,language'
-            });
+          try {
+            const { error: entryError } = await supabase
+              .from('entry_translations')
+              .upsert({
+                entry_id: matchingEntry.id,
+                language: language,
+                origin: origin
+              }, {
+                onConflict: 'entry_id,language'
+              });
 
-          if (entryError) {
-            console.error(`Error saving ${language} entry translation for ${word}:`, entryError);
+            if (entryError) {
+              console.error(`Error saving ${language} entry translation for ${word}:`, entryError);
+              importSummary.errors.push(`Entry "${word}" origin translation error: ${entryError.message}`);
+            } else {
+              importSummary.entriesTranslated++;
+              console.log(`Successfully saved ${language} entry translation for "${word}"`);
+            }
+          } catch (error: any) {
+            importSummary.errors.push(`Entry "${word}" origin translation error: ${error.message}`);
           }
         }
 
-        // Save definition translations
-        for (const defTranslation of definitions) {
+        // Save definition translations with improved matching
+        for (let defIndex = 0; defIndex < definitions.length; defIndex++) {
+          const defTranslation = definitions[defIndex];
           const { grammaticalClass, meaning, example } = defTranslation;
+          importSummary.definitionsProcessed++;
           
-          // Find matching definition by grammatical class and meaning
-          const matchingDefinition = matchingEntry.definitions.find(def =>
-            def.grammaticalClass.toLowerCase() === grammaticalClass.toLowerCase() &&
-            def.meaning.toLowerCase() === meaning.toLowerCase()
+          console.log(`Processing definition ${defIndex + 1} for "${word}":`, {
+            grammaticalClass,
+            meaning: meaning?.substring(0, 50) + '...',
+            hasTranslations: !!(defTranslation.grammaticalClassTranslation || defTranslation.meaningTranslation || defTranslation.exampleTranslation)
+          });
+
+          // Find matching definition using multiple strategies
+          let matchingDefinition = null;
+
+          // Strategy 1: Match by exact grammatical class and meaning
+          matchingDefinition = matchingEntry.definitions.find(def =>
+            def.grammaticalClass.toLowerCase().trim() === grammaticalClass.toLowerCase().trim() &&
+            def.meaning.toLowerCase().trim() === meaning.toLowerCase().trim()
           );
 
+          // Strategy 2: Match by position if exact match fails
+          if (!matchingDefinition && defIndex < matchingEntry.definitions.length) {
+            matchingDefinition = matchingEntry.definitions[defIndex];
+            console.log(`Using position-based matching for definition ${defIndex + 1} of "${word}"`);
+          }
+
+          // Strategy 3: Match by grammatical class only if still no match
           if (!matchingDefinition) {
-            console.warn(`Definition not found for: ${grammaticalClass} - ${meaning}`);
+            matchingDefinition = matchingEntry.definitions.find(def =>
+              def.grammaticalClass.toLowerCase().trim() === grammaticalClass.toLowerCase().trim()
+            );
+            if (matchingDefinition) {
+              console.log(`Using grammatical class only matching for definition of "${word}"`);
+            }
+          }
+
+          if (!matchingDefinition) {
+            console.warn(`Definition not found for: "${word}" - ${grammaticalClass} - ${meaning?.substring(0, 30)}...`);
+            importSummary.errors.push(`Definition not found for "${word}": ${grammaticalClass} - ${meaning?.substring(0, 30)}...`);
             continue;
           }
+
+          console.log(`Matched definition for "${word}": ${matchingDefinition.grammaticalClass} - ${matchingDefinition.meaning?.substring(0, 30)}... (ID: ${matchingDefinition.id})`);
 
           // Only save translations that have actual content
           const hasTranslations = defTranslation.grammaticalClassTranslation || 
@@ -218,31 +285,54 @@ const TranslationImportView = ({ data, language, onBack, onRefreshData }: Transl
                                  defTranslation.exampleTranslation;
 
           if (hasTranslations) {
-            const { error: defError } = await supabase
-              .from('definition_translations')
-              .upsert({
-                definition_id: matchingDefinition.id,
-                language: language,
-                grammatical_class: defTranslation.grammaticalClassTranslation || null,
-                meaning: defTranslation.meaningTranslation || null,
-                example: defTranslation.exampleTranslation || null
-              }, {
-                onConflict: 'definition_id,language'
-              });
+            try {
+              const { error: defError } = await supabase
+                .from('definition_translations')
+                .upsert({
+                  definition_id: matchingDefinition.id,
+                  language: language,
+                  grammatical_class: defTranslation.grammaticalClassTranslation || null,
+                  meaning: defTranslation.meaningTranslation || null,
+                  example: defTranslation.exampleTranslation || null
+                }, {
+                  onConflict: 'definition_id,language'
+                });
 
-            if (defError) {
-              console.error(`Error saving ${language} definition translation:`, defError);
+              if (defError) {
+                console.error(`Error saving ${language} definition translation:`, defError);
+                importSummary.errors.push(`Definition translation error for "${word}": ${defError.message}`);
+              } else {
+                importSummary.definitionsTranslated++;
+                console.log(`Successfully saved ${language} definition translation for "${word}" - ${matchingDefinition.grammaticalClass}`);
+              }
+            } catch (error: any) {
+              importSummary.errors.push(`Definition translation error for "${word}": ${error.message}`);
             }
           }
         }
       }
 
-      toast({
-        title: "Translations imported successfully",
-        description: `${language === 'de' ? 'German' : 'Portuguese'} translations have been imported and saved.`,
-      });
+      // Show comprehensive import summary
+      const successMessage = `${language === 'de' ? 'German' : 'Portuguese'} translations imported:\n` +
+                            `• Dictionary: ${importSummary.dictionaryTranslated ? 'Translated' : 'Skipped'}\n` +
+                            `• Entries: ${importSummary.entriesTranslated}/${importSummary.entriesProcessed} translated\n` +
+                            `• Definitions: ${importSummary.definitionsTranslated}/${importSummary.definitionsProcessed} translated`;
 
-      console.log(`Successfully imported ${language} translations. Switching to ${language} language and refreshing data.`);
+      if (importSummary.errors.length > 0) {
+        console.warn('Import completed with errors:', importSummary.errors);
+        toast({
+          title: "Import completed with warnings",
+          description: `${successMessage}\n\n${importSummary.errors.length} warnings - check console for details`,
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Translations imported successfully",
+          description: successMessage,
+        });
+      }
+
+      console.log(`Successfully imported ${language} translations. Summary:`, importSummary);
       
       // Auto-switch to the imported language
       setCurrentLanguage(language);
@@ -331,9 +421,11 @@ const TranslationImportView = ({ data, language, onBack, onRefreshData }: Transl
             <li>• Only fill in translations where there's original English content</li>
             <li>• Leave translation lines empty when the original field is empty</li>
             <li>• Translations are matched by word and definition content</li>
+            <li>• The import will try multiple matching strategies for better accuracy</li>
             <li>• Existing translations for the same language will be overwritten</li>
             <li>• Words not found in the dictionary will be skipped</li>
             <li>• After upload, the app will automatically switch to the imported language</li>
+            <li>• A detailed summary will show what was successfully imported</li>
           </ul>
         </div>
       </div>

@@ -64,7 +64,10 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
       if (entryError) {
         console.error('Error loading entry translations:', entryError);
       } else {
-        console.log(`Entry translations for ${language}:`, entryTranslations);
+        console.log(`Entry translations for ${language}:`, entryTranslations?.length || 0, 'translations found');
+        entryTranslations?.forEach(et => {
+          console.log(`Entry translation: ${et.entry_id} -> "${et.origin}"`);
+        });
       }
 
       // Get definition IDs - using the PRESERVED database IDs
@@ -81,24 +84,35 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
       if (defError) {
         console.error('Error loading definition translations:', defError);
       } else {
-        console.log(`Definition translations for ${language}:`, definitionTranslations);
+        console.log(`Definition translations for ${language}:`, definitionTranslations?.length || 0, 'translations found');
+        definitionTranslations?.forEach(dt => {
+          console.log(`Definition translation: ${dt.definition_id} -> class: "${dt.grammatical_class}", meaning: "${dt.meaning?.substring(0, 30)}..."`);
+        });
       }
 
       // Create translated data structure - IDs are now stable
       const translatedEntries = data.entries.map(entry => {
         const entryTranslation = entryTranslations?.find(t => t.entry_id === entry.id);
         
-        console.log(`Processing entry "${entry.word}" (ID: ${entry.id}) - stable ID used`);
+        console.log(`Processing entry "${entry.word}" (ID: ${entry.id}) - Found translation: ${!!entryTranslation}`);
         
         const translatedDefinitions = entry.definitions.map(def => {
           const defTranslation = definitionTranslations?.find(t => t.definition_id === def.id);
           
-          return {
+          const translatedDef = {
             ...def,
             grammaticalClass: defTranslation?.grammatical_class || def.grammaticalClass,
             meaning: defTranslation?.meaning || def.meaning,
             example: defTranslation?.example || def.example
           };
+
+          if (defTranslation) {
+            console.log(`Definition ${def.id} translated: class="${translatedDef.grammaticalClass}", meaning="${translatedDef.meaning?.substring(0, 30)}..."`);
+          } else {
+            console.log(`Definition ${def.id} not translated (using original): class="${def.grammaticalClass}", meaning="${def.meaning?.substring(0, 30)}..."`);
+          }
+
+          return translatedDef;
         });
 
         return {
@@ -115,6 +129,22 @@ export const useTranslatedContent = (data: DictionaryData | null, language: Lang
       };
 
       console.log(`Final translated data for ${language} with stable IDs:`, translatedDictionary);
+      
+      // Log summary of translations applied
+      const entriesWithOriginTranslations = translatedEntries.filter(e => e.origin !== data.entries.find(orig => orig.id === e.id)?.origin).length;
+      const definitionsWithTranslations = translatedEntries.flatMap(e => e.definitions).filter(d => {
+        const origEntry = data.entries.find(e => e.id === translatedEntries.find(te => te.definitions.includes(d))?.id);
+        const origDef = origEntry?.definitions.find(od => od.id === d.id);
+        return origDef && (d.grammaticalClass !== origDef.grammaticalClass || d.meaning !== origDef.meaning || d.example !== origDef.example);
+      }).length;
+      
+      console.log(`Translation summary for ${language}:`, {
+        entriesWithOriginTranslations,
+        definitionsWithTranslations,
+        totalEntries: translatedEntries.length,
+        totalDefinitions: translatedEntries.flatMap(e => e.definitions).length
+      });
+
       setTranslatedData(translatedDictionary);
 
     } catch (error: any) {
