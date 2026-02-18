@@ -199,13 +199,10 @@ export const useDictionary = () => {
         throw dictError;
       }
 
-      // Get existing entries to understand what's in the database
+      // Get existing entries and definitions with separate queries
       const { data: existingEntries, error: existingError } = await supabase
         .from('dictionary_entries')
-        .select(`
-          id, word, slug,
-          definitions (id, grammatical_class, meaning, example)
-        `)
+        .select('*')
         .eq('dictionary_id', DICTIONARY_ID);
 
       if (existingError) {
@@ -213,9 +210,32 @@ export const useDictionary = () => {
         throw existingError;
       }
 
+      const existingEntryIds = (existingEntries || []).map(entry => entry.id);
+      const { data: existingDefinitions, error: existingDefsError } = await supabase
+        .from('definitions')
+        .select('*')
+        .in('entry_id', existingEntryIds);
+
+      if (existingDefsError) {
+        console.error('Error fetching existing definitions:', existingDefsError);
+        throw existingDefsError;
+      }
+
+      const definitionsByEntryId = new Map<string, any[]>();
+      (existingDefinitions || []).forEach(def => {
+        const list = definitionsByEntryId.get(def.entry_id) || [];
+        list.push(def);
+        definitionsByEntryId.set(def.entry_id, list);
+      });
+
+      const existingEntriesWithDefinitions = (existingEntries || []).map(entry => ({
+        ...entry,
+        definitions: definitionsByEntryId.get(entry.id) || []
+      }));
+
       // Create maps for efficient lookup - use ID as primary key
-      const existingEntriesById = new Map(existingEntries?.map(entry => [entry.id, entry]) || []);
-      const existingEntriesBySlug = new Map(existingEntries?.map(entry => [entry.slug, entry]) || []);
+      const existingEntriesById = new Map(existingEntriesWithDefinitions.map(entry => [entry.id, entry]) || []);
+      const existingEntriesBySlug = new Map(existingEntriesWithDefinitions.map(entry => [entry.slug, entry]) || []);
 
       // Process each entry in the sorted data
       for (let i = 0; i < sortedData.entries.length; i++) {
@@ -366,7 +386,7 @@ export const useDictionary = () => {
         .filter(entry => entry.id && entry.id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i))
         .map(entry => entry.id);
       
-      const entriesToDelete = (existingEntries || [])
+      const entriesToDelete = existingEntriesWithDefinitions
         .filter(entry => !currentEntryIds.includes(entry.id))
         .map(entry => entry.id);
 
